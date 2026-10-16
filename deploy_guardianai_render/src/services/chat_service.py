@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 from src.core.config import MODEL_NAME
 from src.schemas.chat import ChatRequest, ChatResponse
 from src.services.knowledge_service import KnowledgeService
+from src.services.groq_service import GroqService
 from src.services.gemini_service import GeminiService
 from src.repositories.chat_repository import ChatRepository
 from src.utils.text import limpar_texto_mobile, normalizar_texto
@@ -16,7 +17,7 @@ class ChatService:
     Orquestra o pipeline de triagem e conversação:
     1. Guardrail farmacológico emergencial (Paracetamol em felinos)
     2. Guardrail toxicológico determinístico (Alimentos proibidos)
-    3. Inferência generativa contextual (Gemini) com histórico deslizante
+    3. Inferência generativa contextual (Groq openai/gpt-oss-120b com fallback Gemini)
     4. Fallback semântico (FAQ cotidiana)
     5. Blindagem contra evasão de domínio (Prompt injection de código)
     6. Fallback clínico contextual por porte e idade
@@ -109,7 +110,7 @@ class ChatService:
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 
-        # 3. Tentativa de Inferência via Gemini com Memória Multi-turnos e Janela Deslizante
+        # 3. Tentativa de Inferência Generativa Multi-turnos (Groq Primário com Fallback Gemini)
         contexto_pet_str = ""
         if request.petContext and request.petContext.nome:
             p = request.petContext
@@ -122,7 +123,17 @@ class ChatService:
         eh_pedido_programacao = detectar_pedido_programacao(request.pergunta)
         prompt_atual = f"{contexto_pet_str}\n\nPergunta do Tutor: {request.pergunta}" if contexto_pet_str else request.pergunta
 
-        resposta_ia = GeminiService.gerar_resposta(prompt_atual, request.historico)
+        origem_ia = f"Guardian AI (Groq: {MODEL_NAME})"
+
+        # 3.1. Inferência Primária: Groq Cloud (openai/gpt-oss-120b)
+        resposta_ia = GroqService.gerar_resposta(prompt_atual, request.historico)
+
+        # 3.2. Fallback de Contingência: Google Gemini (caso Groq oscile ou não tenha cota)
+        if not resposta_ia:
+            resposta_ia = GeminiService.gerar_resposta(prompt_atual, request.historico)
+            if resposta_ia:
+                origem_ia = "Guardian AI (Fallback Gemini)"
+
         if resposta_ia:
             texto_sem_codigo = sanitizar_resposta_anti_codigo(resposta_ia, eh_pedido_programacao)
             texto_limpo = limpar_texto_mobile(texto_sem_codigo)
@@ -131,7 +142,7 @@ class ChatService:
                 categoria="saude",
                 urgencia="baixa",
                 acoes_recomendadas=["Acompanhar o bem-estar", "Manter hidratação regular"],
-                origem_resposta=f"Guardian AI ({MODEL_NAME})"
+                origem_resposta=origem_ia
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 

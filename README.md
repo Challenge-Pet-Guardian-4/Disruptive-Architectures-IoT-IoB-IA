@@ -101,7 +101,7 @@ Para triagem veterinária e orientação clínica preventiva de cães e gatos, a
 │    sem ferramentas / grounding)       │    inventar dosagens, tolerâncias químicas e ignorar toxicidades graves. │
 ├───────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
 │ 4. ABORDAGEM ADOTADA:                 │    Perfeita Harmonia Técnica:                                            │
-│    LLM Generativo (Gemini 3.5 Flash)  │    • O LLM processa linguagem natural, interpreta queixas e acolhe.      │
+│    LLM Generativo (Groq 120B / Gemini)│    • O LLM processa linguagem natural, interpreta queixas e acolhe.      │
 │    + Tool Calling Determinístico      │    • O Dispatcher em Python consulta bases toxicológicas determinísticas.│
 │    + Guardrails Anti-Pretexto         │    • O Pydantic valida contratos de dados estritos para a clínica Clyvo. │
 └───────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
@@ -111,11 +111,11 @@ Para triagem veterinária e orientação clínica preventiva de cães e gatos, a
 
 | Tecnologia / Componente | Versão / Padrão | Justificativa Técnica no Projeto |
 | :--- | :--- | :--- |
-| **SDK Google GenAI** | `google-genai>=2.3.0` | Biblioteca oficial da Google para consumo das novas APIs do ecossistema Gemini via Interactions API (`client.interactions.create`). |
-| **LLM (Modelo)** | `gemini-3.5-flash-lite` | Baixíssima latência de inferência, excelente custo-benefício, forte aderência a System Instructions de segurança e suporte nativo a Function Calling e JSON Schema. |
+| **Motor Primário (Groq LPU)** | `openai/gpt-oss-120b` via `groq>=0.9.0` | Arquitetura Mixture-of-Experts (MoE 120B) aberta rodando em LPU (Language Processing Unit) da Groq com altíssimo throughput e ultra-baixa latência de resposta. |
+| **Motor Fallback (Google GenAI)** | `gemini-3.5-flash-lite` via `google-genai` | Fallback de contingência caso ocorram oscilações de cota ou rede no provedor primário. |
 | **Tool Calling Determinístico** | Dispatcher Python Local | Garante *ground-truth* absoluto: dados sobre alimentos venenosos e condutas de porte/idade vêm de funções em código, não de probabilidades estatísticas de tokens. |
 | **Validação Estruturada** | `pydantic>=2.0` | Extração do schema `ResumoTriagem` via `model_validate_json()`, assegurando interoperabilidade tipada com prontuários e APIs da clínica. |
-| **Segurança de Credenciais** | Colab Secrets (`userdata`) / `.env` | Isolamento estrito de chaves de API sem vazamento para versionamento de código. |
+| **Segurança de Credenciais** | Variáveis de ambiente (`.env` / Render Secrets) | Isolamento estrito de chaves de API sem vazamento para versionamento de código. |
 
 ---
 
