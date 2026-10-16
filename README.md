@@ -20,7 +20,7 @@
 
 ## 🔗 Links Oficiais da Entrega
 
-* **Repositório GitHub:** [https://github.com/Challenge-Pet-Guardian-3/Disruptive-Architectures-IoT-IoB-IA](https://github.com/Challenge-Pet-Guardian-3/Disruptive-Architectures-IoT-IoB-IA)
+* **Repositório GitHub:** [https://github.com/Challenge-Pet-Guardian-4/Disruptive-Architectures-IoT-IoB-IA](https://github.com/Challenge-Pet-Guardian-4/Disruptive-Architectures-IoT-IoB-IA)
 * **Vídeo Pitch Oficial no YouTube:** [https://youtu.be/zJd3PCx7tt8](https://youtu.be/zJd3PCx7tt8)
 * **Notebook Principal:** [`challenge-petguardian.ipynb`](./challenge-petguardian.ipynb)
 * **Microsserviço em Produção (FastAPI / Render):** [`deploy_guardianai_render`](./deploy_guardianai_render)
