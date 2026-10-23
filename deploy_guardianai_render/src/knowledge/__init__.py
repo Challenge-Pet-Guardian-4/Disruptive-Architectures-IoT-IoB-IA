@@ -1,13 +1,21 @@
 """
-Pacote Knowledge: Bases de Conhecimento em Memória
+Pacote Knowledge: Base de Conhecimento Estruturada em Chunks — Pet Guardian
 """
-from src.knowledge.toxicology import BASE_ALIMENTOS_TOXICOS
-from src.knowledge.preventive_care import BASE_CUIDADOS_PORTE_IDADE, BASE_FAIXA_ETARIA
-from src.knowledge.faq import BASE_RESPOSTAS_COTIDIANAS
+from typing import List, Dict, Any
+from src.knowledge.toxicology import CHUNKS_TOXICOLOGY
+from src.knowledge.preventive_care import CHUNKS_PREVENTIVE_CARE
+from src.knowledge.faq import CHUNKS_FAQ
+
+# Consolidação unificada de todos os chunks da Base de Conhecimento Pet Guardian
+BASE_CHUNKS_RAG: List[Dict[str, Any]] = (
+    CHUNKS_TOXICOLOGY +
+    CHUNKS_PREVENTIVE_CARE +
+    CHUNKS_FAQ
+)
 
 __all__ = [
-    "BASE_ALIMENTOS_TOXICOS",
-    "BASE_CUIDADOS_PORTE_IDADE",
-    "BASE_FAIXA_ETARIA",
-    "BASE_RESPOSTAS_COTIDIANAS",
+    "CHUNKS_TOXICOLOGY",
+    "CHUNKS_PREVENTIVE_CARE",
+    "CHUNKS_FAQ",
+    "BASE_CHUNKS_RAG",
 ]

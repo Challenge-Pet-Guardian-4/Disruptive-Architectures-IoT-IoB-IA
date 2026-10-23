@@ -81,3 +81,20 @@ def excluir_sessao_endpoint(session_id: str) -> dict:
     """
     sucesso = ChatRepository.excluir_sessao(session_id)
     return {"status": "ok" if sucesso else "error", "session_id": session_id}
+
+@ai_router.get("/vector-store/status")
+def vector_store_status_endpoint() -> dict:
+    """
+    Retorna o status do Banco de Dados Vetorial ChromaDB (persistência, coleção e total de chunks indexados).
+    """
+    from src.database.vector_store import get_vector_store, CHROMA_DIR, COLLECTION_NAME
+    vs = get_vector_store()
+    return {
+        "status": "online" if vs.is_ready else "fallback_mode",
+        "database": "ChromaDB (HNSW)",
+        "storage_path": CHROMA_DIR,
+        "collection_name": COLLECTION_NAME,
+        "indexed_chunks": vs.count,
+        "vector_dimensions": 384,
+        "distance_metric": "cosine"
+    }

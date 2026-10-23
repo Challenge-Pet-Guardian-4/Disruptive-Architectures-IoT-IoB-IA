@@ -2,13 +2,14 @@
 Módulo Core: Configurações Globais da Aplicação
 """
 import os
-from dotenv import load_dotenv
-
-# Carrega variáveis de ambiente do .env se presente
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Metadados e versão
-APP_TITLE = "PetGuardian / Clyvo Care — AI Microservice"
+APP_TITLE = "PetGuardian — AI Microservice"
 APP_DESCRIPTION = "API de IA Generativa e Triagem Preventiva para pets com respostas limpas e guardrails de segurança."
 APP_VERSION = "2.0.0"
 

@@ -1,5 +1,5 @@
 """
-Schemas Pydantic: Conversação, Chat e Auditoria da IA
+Schemas Pydantic: Conversação, Chat, RAG e Auditoria da IA — Pet Guardian
 """
 from typing import Optional, List
 from pydantic import BaseModel, Field
@@ -8,6 +8,13 @@ from src.schemas.pet import PetContextPayload
 class MensagemHistorico(BaseModel):
     sender: str = Field(..., description="Remetente da mensagem: 'user' ou 'assistant'/'model'")
     text: str = Field(..., description="Conteúdo textual da mensagem")
+
+class RetrievedSource(BaseModel):
+    id: str = Field(..., description="Identificador único do trecho (chunk) recuperado")
+    source: str = Field(..., description="Nome formal da fonte consultada para citação")
+    category: str = Field(..., description="Categoria clínica: 'toxicology', 'preventive_care', 'faq'")
+    title: str = Field(..., description="Título do tópico consultado")
+    similarity_score: float = Field(..., description="Score de similaridade de cosseno (arredondado em 4 casas)")
 
 class ChatRequest(BaseModel):
     pergunta: str = Field(..., description="Dúvida, queixa ou relato enviado pelo tutor")
@@ -22,6 +29,8 @@ class ChatResponse(BaseModel):
     acoes_recomendadas: Optional[List[str]] = Field(default=None, description="Orientações e checklist de ações sugeridas para o tutor")
     origem_resposta: str = Field(default="Guardian AI (PetGuardian Care)", description="Identificador do mecanismo responsável pela geração da resposta")
     sessionId: Optional[str] = Field(default=None, description="Identificador da sessão ativa no banco de dados")
+    sources_used: List[RetrievedSource] = Field(default_factory=list, description="Lista de trechos formais da base de conhecimento utilizados na resposta")
+    rag_grounded: bool = Field(default=False, description="Indica se a resposta foi fundamentada em documentos recuperados via RAG")
 
 class MensagemBancoItem(BaseModel):
     id: int = Field(..., description="ID sequencial da mensagem")

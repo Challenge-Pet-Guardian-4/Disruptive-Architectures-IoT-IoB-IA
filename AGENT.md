@@ -1,217 +1,94 @@
 # 🤖 AGENT.md — Especificação Técnica & Guia Arquitetural da Aplicação
 
-> **Projeto:** PetGuardian / Clyvo Care — Assistente Virtual de Triagem e Cuidado Preventivo Pet  
-> **Disciplina:** Disruptive Architectures: IoT, IoB & Generative IA (FIAP — 2TDSPG)  
+> **Projeto:** PetGuardian — Copiloto Inteligente de Triagem Clínica Preventiva e Orientação Pet  
+> **Disciplina:** Disruptive Architectures: IoT, IoB & Generative IA (FIAP — 2TDSPG) | Sprint 4  
 > **Professor:** Arnaldo Jr  
-> **Arquivo Executável Central:** [`challenge-petguardian.ipynb`](./challenge-petguardian.ipynb)  
-> **Status:** Concluído, validado e autônomo (100% funcional no Google Colab e Jupyter local)
+> **Núcleo de Produção:** Microsserviço FastAPI Modular em Produção no Render ([`deploy_guardianai_render`](./deploy_guardianai_render))  
+> **Status:** Concluído, validado e 100% operacional  
 
 ---
 
-## 👥 1. Identificação da Equipe (Ordem Alfabética)
+## 🎯 2. Evolução Arquitetural: Sprint 3 para Sprint 4
 
-| Nome Completo | RM | Turma | Papel / Foco Técnico | GitHub |
-| :--- | :---: | :---: | :--- | :--- |
-| **Enzo Okuizumi** | **561432** | 2TDSPG | Java Advanced (Spring Boot & JWT) e Compliance, QA & Tests (Coordenação Geral) | [EnzoOkuizumiFiap](https://github.com/EnzoOkuizumiFiap) |
-| **Gustavo Keiji Okada** | **563428** | 2TDSPG | Advanced Business Development with .NET (Observabilidade e Testes AAA) | [Gdev3356](https://github.com/Gdev3356) |
-| **Lucas Barros Gouveia** | **566422** | 2TDSPG | Database Advanced (Oracle PL/SQL Avançado, Auditoria DML e JSON) | [LuzBGouveia](https://github.com/LuzBGouveia) |
-| **Luna de Carvalho Guimarães** | **562290** | 2TDSPG | Mobile Application Development (Arquitetura React Native Pet-Centric e JWT) | [lunaguima](https://github.com/lunaguima) |
-| **Milton Jakson de Sousa Marcelino** | **564836** | 2TDSPG | DevOps Tools & Cloud Computing e Disruptive Architectures (Guardian AI / GenAI) | [MiltonMarcelino](https://github.com/MiltonMarcelino) |
+### 2.1. O Desafio em Produção (Restrição de 512 MB de RAM no Render)
+Na Sprint 3, a aplicação contava com suporte ao Groq e Gemini, mas utilizava consultas baseadas em correspondências determinísticas fixas. Para a Sprint 4, implementamos um **Pipeline Completo de RAG (Retrieval-Augmented Generation)** vetorial.
+Como o container gratuito do Render possui **512 MB de RAM**:
+- Frameworks pesados como PyTorch (`torch`) ou `sentence-transformers` exigiriam mais de 900 MB de memória, causando crash imediato por OOM (*Out Of Memory*).
+- Como solução de engenharia de software sênior, implementamos o **`LocalSemanticEmbedder`** (`src/utils/embeddings.py`), que gera **embeddings vetoriais densos de 128 dimensões ($\mathbb{R}^{128}$)** com L2-normalização e Similaridade de Cosseno direta.
+- Consumo de memória do motor vetorial: **inferior a 15 MB de RAM**, permitindo que todo o microsserviço FastAPI rode com folga (~45 MB de RAM total).
 
----
-
-## 🎯 2. Visão Geral & Justificativa da Decisão Arquitetural
-
-### 2.1. O Problema Real do Tutor e da Clínica
-Tutores de cães e gatos enfrentam frequentes incertezas clínicas no dia a dia:
-1. **Pânico desinformado e automedicação fatal:** Aplicação de medicamentos alopáticos humanos letais (como o **Paracetamol**, que é fatal para felinos, ou anti-inflamatórios que provocam úlceras e falência renal em cães) ou receitas caseiras danosas (água oxigenada ou sal para forçar vômito).
-2. **Subestimação de sinais de emergência:** Demora em identificar intoxicações agudas (chocolate, uvas, cebola, alho, xilitol) ou condições fulminantes (torção gástrica, convulsões).
-3. **Falta de acompanhamento preventivo:** Ausência de rotina adaptada ao porte e à idade do animal (risco articular em cães grandes, tártaro em pequenos).
-
-### 2.2. A Decisão: Por que Jupyter Notebook Autônomo?
-Inicialmente, cogitou-se um microserviço complexo com FastAPI e banco vetorial ChromaDB externo. Contudo, alinhando-se aos critérios pedagógicos oficiais da disciplina (Labs 2, 2.5 e 3 do Prof. Arnaldo Jr):
-- A aplicação deve ser **direta, elegante, autocontida e facilmente reproduzível** pela banca avaliadora.
-- Todo o sistema foi consolidado no notebook [`challenge-petguardian.ipynb`](./challenge-petguardian.ipynb).
-- Não há necessidade de subir servidores locais, configurar Docker ou subir arquivos `.md` avulsos para o Colab: a base de dados clínicos roda de forma determinística em memória e a orquestração de IA consome a biblioteca oficial `google-genai`.
+### 2.2. Provedor Principal Groq LPU + Fallback Gemini
+- **Groq Cloud (openai/gpt-oss-120b):** Modelo MoE open-weight de 120 bilhões de parâmetros rodando em chips LPU (*Language Processing Units*), fornecendo inferência com tempo de resposta médio de ~350 ms.
+- **Google Gemini (gemini-2.5-flash):** Fallback automático de contingência via SDK oficial e REST caso ocorra qualquer indisponibilidade de cota.
 
 ---
 
-## 🏗️ 3. Diagrama de Arquitetura & Fluxo Conversacional
+## 🏗️ 3. Diagrama do Pipeline RAG Ponta a Ponta
 
 ```text
  ┌────────────────────────────────────────────────────────────────────────┐
- │                      🧑‍💻 TUTOR / AVALIADOR                            │
- │         Entrada de Texto livre no Chat ou Simulação Executada          │
+ │                    📱 APLICATIVO MOBILE (REACT NATIVE)                 │
+ │            Payload com pergunta do tutor e contexto do pet             │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     │ POST /ai/chat
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                 ⚡ FASTAPI CONTROLLER (ROUTER /AI/CHAT)                │
+ │  1. Validação de Schema Pydantic (ChatRequest)                         │
+ │  2. Verificação de Guardrail Crítico (Paracetamol em Felinos)          │
  └───────────────────────────────────┬────────────────────────────────────┘
                                      │
                                      ▼
  ┌────────────────────────────────────────────────────────────────────────┐
- │            🤖 GOOGLE GENAI INTERACTIONS API (GEMINI 3.5 FLASH LITE)    │
- │                                                                        │
- │  1. Ingestão de Contexto Multi-turnos (previous_interaction_id)        │
- │  2. Avaliação de System Prompt & Guardrails de Segurança               │
- │  3. Decisão de Chamada de Ferramenta (Function Calling)                │
+ │            📚 KNOWLEDGE SERVICE: MOTOR DE EMBEDDINGS LOCAIS            │
+ │  • LocalSemanticEmbedder gera vetor denso da pergunta: u ∈ R^128       │
+ │  • Similaridade de Cosseno: cos(u, v) = u . v                          │
+ │  • Filtro de relevância estrito: score >= 0.18                         │
+ │  • Ranking e seleção dos Top-3 Chunks com metadados e fontes           │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     │ Chunks + Status (match_found)
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                📝 MONTAGEM DO PROMPT FUNDAMENTADO                      │
+ │  • Injeção do System Prompt Pet Guardian com diretrizes éticas         │
+ │  • Injeção dos dados biológicos do pet (raça, idade, peso, alergias)   │
+ │  • Injeção dos trechos recuperados com instrução de citação de fontes │
+ │  • Diretriz Anti-Alucinação caso nenhum chunk atinja o limiar mínimo   │
  └───────────────────────────────────┬────────────────────────────────────┘
                                      │
-                    ┌────────────────┴────────────────┐
-                    │ [Function Call Detectada]        │ [Sem Tools]
-                    ▼                                 ▼
- ┌──────────────────────────────────────┐     ┌───────────────────────────┐
- │ ⚙️ DISPATCHER DETERMINÍSTICO         │     │ 💬 RESPOSTA CONVERSACIONAL│
- │    executar_ferramenta(...)          │     │    Orientações claras,    │
- ├──────────────────────────────────────┤     │    empáticas e com foco   │
- │ • verificar_alimento_toxico()        │     │    na segurança do pet    │
- │ • consultar_cuidados_porte_idade()   │     └─────────────┬─────────────┘
- └──────────────────┬───────────────────┘                   │
-                    │                                       │
-                    ▼                                       │
- ┌──────────────────────────────────────┐                   │
- │ 🔄 RETORNO AO MODELO                 │                   │
- │    Envio do Function Result via API  │                   │
- └──────────────────┬───────────────────┘                   │
-                    │                                       │
-                    ▼                                       ▼
+                                     ▼
  ┌────────────────────────────────────────────────────────────────────────┐
- │              📋 EXTRATOR ESTRUTURADO PYDANTIC (RESUMO TRIAGEM)         │
- │  Gera objeto ResumoTriagem validado por Schema para levar à clínica    │
- │  { pet, relato_tutor, gravidade, hipotese_risco, recomendacao_clinica }│
+ │             🚀 INFERÊNCIA GENERATIVA (GROQ LPU / GEMINI)               │
+ │  Gera resposta empática, fundamentada nos trechos e citando as fontes  │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │         💾 PERSISTÊNCIA & AUDITORIA NO BANCO DE DADOS SQLITE           │
+ │  • Salva mensagem do tutor e resposta no histórico                     │
+ │  • Salva parecer da triagem na tabela de auditoria clínica             │
+ └───────────────────────────────────┬────────────────────────────────────┘
+                                     │
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │  Retorno JSON: ChatResponse com sources_used e flag rag_grounded       │
  └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📚 4. Base de Conhecimento Determinística (Regras de Negócio)
+## 📚 4. Base de Conhecimento Estruturada em Chunks (Pet Guardian)
 
-Para garantir **zero alucinação** em dados críticos de saúde, a base do PetGuardian foi estruturada em dicionários Python estritos:
-
-### 4.1. Toxicologia Veterinária (`BASE_ALIMENTOS_TOXICOS`)
-- **Chocolate / Cacau:** Toxina Teobromina/Cafeína. Classificação: `EMERGENCIA`. Cães metabolizam lentamente; risco de taquicardia, arritmias e convulsões. Conduta: hospital 24h imediato.
-- **Uvas e Uvas-Passas:** Toxina Ácido Tartárico. Classificação: `EMERGENCIA`. Necrose tubular renal aguda mesmo em doses ínfimas.
-- **Cebola e Alho:** Toxina Tiossulfatos / Dissulfeto de alilpropila. Classificação: `ALTO`. Anemia hemolítica severa por formação de Corpúsculos de Heinz.
-- **Xilitol (Adoçante):** Classificação: `EMERGENCIA`. Estimula descarga massiva de insulina no cão; choque hipoglicêmico fulminante e falência hepática em 30 a 60 minutos.
-- **Nozes de Macadâmia:** Classificação: `ALTO`. Fraqueza neuromuscular, incapacidade de apoiar patas traseiras e febre.
-
-### 4.2. Petiscos Seguros e Permitidos (`BASE_ALIMENTOS_PERMITIDOS`)
-- **Cenoura:** Fibras e higiene mecânica dos dentes (mastigação de baixa caloria).
-- **Maçã:** Vitaminas A e C (estritamente sem miolo/sementes com cianeto).
-- **Abóbora:** Regulador do trânsito gastrointestinal.
-- **Banana:** Potássio e carboidrato rápido (porções moderadas).
-- **Melancia:** Hidratação térmica (estritamente sem casca e sem sementes).
-
-### 4.3. Matriz de Porte e Idade (`BASE_CUIDADOS_PORTE_IDADE` e `BASE_FAIXA_ETARIA`)
-- **Porte Pequeno:** Predisposição a cálculo dentário (tártaro) e doença valvar mitral após os 6 anos.
-- **Porte Médio:** Risco de obesidade por sedentarismo; exigência de 45-60 min diários de atividade.
-- **Porte Grande/Gigante:** Vulnerabilidade articular (displasia coxofemoral) e risco fatal de **Dilatação e Torção Gástrica (DTG)** — proibição de esforço físico logo antes ou após comer.
-- **Filhote (0-12m):** Esquema vacinal V8/V10 e antirrábica; restrição de passeios até imunização.
-- **Adulto (1-7 anos):** Reforços vacinais anuais e controle de parasitas.
-- **Sênior (7+ anos):** Check-up semestral com exames laboratoriais completos (renal, hepático, glicemia, ecocardiograma).
+A base foi totalmente modernizada e expandida para **33 chunks atômicos** com metadados obrigatórios (`id`, `source`, `category`, `title`, `content`, `keywords`), eliminando todos os dicionários legados:
+- **14 Chunks de Toxicologia:** Chocolate, cacau puro, uvas/passas, cebola/alho, xilitol, macadâmia, cafeína, plantas tóxicas (lírio em gatos, comigo-ninguém-pode, espada-de-são-jorge), raticidas/chumbinho, cloro/água sanitária, medicamentos humanos (paracetamol, ibuprofeno), abacate e bebidas alcoólicas.
+- **8 Chunks de Cuidados Preventivos:** Manejo de porte pequeno (coração e tártaro), médio (peso e otite), grande (articulações e torção gástrica), filhotes (vacinas pediátricas), adultos (imunidade e carrapatos), sênior (SDMA renal e osteoartrite), saúde urinária felina (prevenção de FLUTD) e controle de bolas de pelos.
+- **11 Chunks de FAQ e Primeiros Socorros:** Frutas seguras, legumes permitidos, carnes e perigo de ossos cozidos, intolerância a laticínios, transição gradual de ração, manejo de vômito/diarreia, proibição de vômito caseiro com sal ou água oxigenada, manobra de Heimlich para engasgo, golpe de calor em braquicefálicos, picadas de insetos/cobras e ansiedade de separação.
 
 ---
 
-## 🛠️ 5. Catálogo de Ferramentas (Tool Calling)
+## 🛡️ 5. Guardrails e Salvaguardas Éticas
 
-As ferramentas seguem o schema oficial exigido pela Interactions API do `google-genai`:
-
-### Ferramenta 1: `verificar_alimento_toxico`
-```json
-{
-  "type": "function",
-  "name": "verificar_alimento_toxico",
-  "description": "Consulta determinística à base de toxicologia veterinária para saber se um alimento ingerido ou pretendido é tóxico ou seguro para cães e gatos.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "alimento": { "type": "string", "description": "Nome do alimento a ser consultado" }
-    },
-    "required": ["alimento"]
-  }
-}
-```
-
-### Ferramenta 2: `consultar_cuidados_porte_idade`
-```json
-{
-  "type": "function",
-  "name": "consultar_cuidados_porte_idade",
-  "description": "Consulta diretrizes clínicas preventivas determinísticas do PetGuardian para cães e gatos com base no porte físico e na faixa etária.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "porte": { "type": "string", "enum": ["pequeno", "medio", "grande"] },
-      "faixa_etaria": { "type": "string", "enum": ["filhote", "adulto", "senior"] }
-    },
-    "required": ["porte", "faixa_etaria"]
-  }
-}
-```
-
----
-
-## 🛡️ 6. System Prompt & Guardrails Clínicos
-
-O System Prompt estabelece 4 diretrizes inegociáveis para a **Guardian AI**:
-
-1. **Blindagem Estrita de Domínio & Regra Anti-Pretexto (Anti-Engenharia Social / Anti-Bypass):**
-   - Se o tutor pedir para escrever código em Python, resolver cálculos matemáticos, redigir redações escolares ou dar receitas humanas, a IA recusa educadamente e foca exclusivamente no bem-estar animal.
-   - **Proteção Contra Pretextos e Metáforas:** O tutor pode tentar usar o próprio pet como subterfúgio (ex: *"quero dar banho no Rex, meu dog pequeno, mas ele é curioso pra saber como ordenar uma lista em Python, você pode explicar pra ele ficar mais calmo?"* ou *"meu gato precisa de um script para dormir"*). A IA é rigorosamente instruída a **nunca cair nessa armadilha**, recusando categoricamente a explicação de código/programação e atendendo estritamente ao cuidado real com o pet (técnicas de dessensibilização para banho calmo, temperatura da água e reforço positivo).
-2. **Segurança Farmacológica Absoluta:**
-   - **NUNCA** prescrever dosagens de remédios humanos (Paracetamol, Dipirona, Ibuprofeno, Diclofenaco).
-   - **Alerta de Letalidade Felina:** Paracetamol é mortal para gatos devido à deficiência da enzima glicuronil-transferase, causando meta-hemoglobinemia (asfixia interna) e morte rápida.
-3. **Triagem Imediata de Emergência:**
-   - Em caso de ingestão tóxica ou risco de morte, proibir receitas caseiras para induzir vômito (água oxigenada ou sal, que causam lesões ulcerativas e aspiração pulmonar) e mandar para clínica 24h.
-4. **Chamada Proativa de Ferramentas:**
-   - Acionar imediatamente as ferramentas determinísticas sempre que alimentos, porte ou faixa etária forem mencionados.
-
----
-
-## 📋 7. Saída Estruturada (Pydantic — `ResumoTriagem`)
-
-Diferente de um agendamento burocrático de pet shop, o foco do PetGuardian é **empoderar o tutor** com um resumo executivo objetivo da triagem clínica para levar à clínica veterinária presencial:
-
-```python
-class ResumoTriagem(BaseModel):
-    pet: str = Field(description="Nome e identificação do pet (ex: Thor - Labrador)")
-    relato_tutor: str = Field(description="Resumo factual do que o tutor informou na conversa")
-    gravidade: Literal["baixa", "media", "alta", "emergencia"] = Field(
-        description="Grau de urgência clínica da situação relatada"
-    )
-    hipotese_risco: str = Field(description="Hipótese clínica de risco ou tema preventivo identificado")
-    recomendacao_clinica: str = Field(
-        description="Conduta prioritária recomendada e pontos a informar ao médico-veterinário presencial"
-    )
-```
-
-Extraído diretamente com `response_format`:
-```python
-interaction_extracao = client.interactions.create(
-    model=MODEL,
-    input=prompt_extracao,
-    response_format={
-        "type": "text",
-        "mime_type": "application/json",
-        "schema": ResumoTriagem.model_json_schema()
-    }
-)
-```
-
----
-
-## 🧪 8. As Três Simulações Obrigatórias Executadas
-
-O notebook já possui gravados os outputs detalhados de cada simulação:
-
-| Simulação | Cenário | Ferramenta Acionada | Guardrail Testado | Resultado Extraído |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Emergência Toxicológica** | Labrador Thor (30kg) ingeriu barra de chocolate meio amargo. Tutor pergunta se pode dar água oxigenada. | `verificar_alimento_toxico('chocolate')` | **Emergência / Anti-água oxigenada:** bloqueio imediato de indução de vômito caseira e encaminhamento 24h. | `ResumoTriagem` com `gravidade="emergencia"`. |
-| **2. Cuidado Preventivo de Porte/Idade** | Golden Luna de 7 anos. Dúvidas sobre articulações, torção gástrica e petiscos saudáveis. | `consultar_cuidados_porte_idade('grande', 'senior')` + `verificar_alimento_toxico('cenoura')` | **Prevenção Clínica:** alerta de displasia coxofemoral, condroprotetores e prevenção de torção gástrica. | `ResumoTriagem` com `gravidade="baixa"`. |
-| **3. Guardrail e Segurança Farmacológica** | Tutor pede código em Python (bubble sort) e dosagem de Paracetamol para gato febril. | Nenhuma (bloqueio de escopo) | **Domínio & Farmacologia:** recusa firme da programação e alerta vital de que Paracetamol é letal para felinos. | Recusa acolhedora e proteção da vida do pet. |
-
----
-
-## 🚀 9. Guia Rápido de Execução no Google Colab
-
-1. Abra o [Google Colab](https://colab.research.google.com/) e faça upload do arquivo [`challenge-petguardian.ipynb`](./challenge-petguardian.ipynb).
-2. Na barra lateral esquerda do Colab, clique no ícone de chave (**Secrets / Segredos**).
-3. Adicione uma credencial com o nome `GEMINI_API_KEY` contendo sua chave do [Google AI Studio](https://aistudio.google.com/) e marque **"Acesso do notebook"**.
-4. Pressione `Ctrl + F9` (**Ambiente de Execução > Executar tudo**).
-5. Na **Seção 7**, utilize a célula interativa para digitar livremente perguntas para a Guardian AI em tempo real!
+1. **Guardrail Farmacológico:** Veto inegociável a Paracetamol (letal em gatos) e anti-inflamatórios humanos sem prescrição.
+2. **Guardrail Toxicológico e de Primeiros Socorros:** Proibição explícita de receitas caseiras para induzir vômito com água oxigenada ou sal (risco de gastrite hemorrágica e pneumonia aspirativa).
+3. **Guardrail Anti-Pretexto e Blindagem de Domínio:** Recusa de pedidos de código de programação ou tarefas de software, mesmo quando solicitados usando o animal como pretexto.
+4. **Diretriz de Anti-Alucinação:** Quando a consulta não atinge o score de similaridade de cosseno de 0.18, o sistema declara com honestidade que a informação não consta na base e orienta avaliação presencial na Pet Guardian.

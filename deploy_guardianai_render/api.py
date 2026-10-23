@@ -1,6 +1,6 @@
 """
 Ponto de Entrada Principal (FastAPI Application Factory & Bootstrap)
-Microsserviço de IA Generativa e Triagem Preventiva PetGuardian / Clyvo Care
+Microsserviço de IA Generativa e Triagem Preventiva PetGuardian
 """
 import os
 import sys
@@ -26,13 +26,17 @@ from src.core.config import (
 from src.routers.health import health_router
 from src.routers.ai import ai_router
 from src.database.connection import init_db
+from src.services.knowledge_service import KnowledgeService
 
 def create_app() -> FastAPI:
     """
     Constrói e configura a instância do FastAPI com middlewares e roteadores modulares.
     """
-    # Inicializa o banco de dados SQLite e cria as tabelas de forma idempotente
+    # 1. Inicializa o banco de dados relacional SQLite (tabelas e índices)
     init_db()
+
+    # 2. Inicializa o banco de dados vetorial ChromaDB (persistência e embeddings em ./data/chroma)
+    KnowledgeService.inicializar_indice_rag()
 
     aplicacao = FastAPI(
         title=APP_TITLE,
