@@ -17,6 +17,37 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEPLOY_DIR = os.path.join(ROOT_DIR, "deploy_guardianai_render")
 sys.path.insert(0, DEPLOY_DIR if os.path.isdir(DEPLOY_DIR) else ROOT_DIR)
 
+# Mock defensivo para permitir teste local em ambientes bare-metal sem pydantic instalado
+try:
+    import pydantic
+except ImportError:
+    import types
+    class MockBaseModel:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+        def model_dump(self):
+            res = {}
+            for k, v in self.__dict__.items():
+                if isinstance(v, list):
+                    res[k] = [
+                        item.model_dump() if hasattr(item, "model_dump")
+                        else (item.__dict__ if hasattr(item, "__dict__") else item)
+                        for item in v
+                    ]
+                elif hasattr(v, "model_dump"):
+                    res[k] = v.model_dump()
+                elif hasattr(v, "__dict__"):
+                    res[k] = v.__dict__
+                else:
+                    res[k] = v
+            return res
+
+    mock_pydantic = types.ModuleType("pydantic")
+    mock_pydantic.BaseModel = MockBaseModel
+    mock_pydantic.Field = lambda default=..., **kwargs: default if default is not ... else None
+    sys.modules["pydantic"] = mock_pydantic
+
 # Paleta ANSI compacta
 RST, BLD, GRN, CYN, YEL, RED, BLU, GRY = (
     "\033[0m", "\033[1m", "\033[92m", "\033[96m",
