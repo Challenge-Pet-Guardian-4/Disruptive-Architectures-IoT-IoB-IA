@@ -68,11 +68,20 @@ class ChatService:
     @classmethod
     def processar_chat(cls, request: ChatRequest) -> ChatResponse:
         session_id = request.sessionId or f"sess_{uuid.uuid4().hex[:12]}"
-        pet_id = request.petContext.id if request.petContext else None
-        nome_pet = request.petContext.nome if request.petContext and request.petContext.nome else "seu pet"
+        
+        # Normalização defensiva: aceita petContext como objeto Pydantic ou dicionário
+        if isinstance(request.petContext, dict):
+            try:
+                from src.schemas.pet import PetContextPayload
+                request.petContext = PetContextPayload(**request.petContext)
+            except Exception:
+                pass
+
+        pet_id = getattr(request.petContext, "id", None) if request.petContext else None
+        nome_pet = getattr(request.petContext, "nome", None) or "seu pet"
         pergunta_norm = normalizar_texto(request.pergunta)
 
-        # 1. Guardrail de Segurança Farmacológica Crítica (Paracetamol em Gatos)
+        # 1. Guardrail de Segurança Farmacológica Crítica e Ética Médica (Paracetamol em Gatos e Opioides/Prescrições)
         if "paracetamol" in pergunta_norm and any(k in pergunta_norm for k in ["gato", "felino", "mingau", "gatinho"]):
             texto_limpo = limpar_texto_mobile(
                 "⛔ ALERTA VITAL: NUNCA DÊ PARACETAMOL PARA UM GATO!\n\n"
@@ -94,7 +103,43 @@ class ChatService:
                         id="tox_12",
                         source="Protocolo de Toxicologia Pet Guardian",
                         category="toxicology",
-                        title="Veto Absoluto a Medicamentos Humanos (Paracetamol, Ibuprofeno e Dipirona)",
+                        title="Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
+                        similarity_score=1.0
+                    )
+                ],
+                rag_grounded=True
+            )
+            return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
+
+        # Bloqueio determinístico de solicitação de dosagem/receita caseira de morfina, opioides e medicamentos controlados (Cenário 4)
+        is_opioide_receita = (
+            any(k in pergunta_norm for k in ["morfina", "tramadol", "opioide"]) or
+            (("receita" in pergunta_norm or "prescreva" in pergunta_norm or "dosagem" in pergunta_norm) and
+             any(k in pergunta_norm for k in ["injetavel", "controlado", "antibiotico", "corticoide"]))
+        )
+        if is_opioide_receita:
+            texto_bloqueio = limpar_texto_mobile(
+                "⛔ VETO CLÍNICO E ÉTICO: PRESCRIÇÃO E DOSAGEM DE SUBSTÂNCIAS CONTROLADAS VEDADAS!\n\n"
+                "Segundo o Protocolo de Toxicologia e Farmacovigilância Pet Guardian (Protocolo tox_12), "
+                "é estritamente vedado calcular dosagens domiciliares ou prescrever receitas de analgésicos opioides (como morfina e tramadol), "
+                "fármacos injetáveis ou medicamentos controlados sem consulta presencial e exame físico individualizado.\n\n"
+                "🚨 Riscos Iminentes de Óbito:\n"
+                "• A administração inadequada de morfina em domicílio acarreta depressão respiratória fulminante, hipotensão severa, coma e parada cardiorrespiratória.\n"
+                "• Prescrição de opioides e controle álgico pós-operatório exigem termo de responsabilidade e retenção de receita especial veterinária.\n\n"
+                "Encaminhe o animal IMEDIATAMENTE a um hospital veterinário presencial da Pet Guardian para manejo adequado e seguro da dor."
+            )
+            resp = ChatResponse(
+                resposta=texto_bloqueio,
+                categoria="EMERGENCIA",
+                urgencia="EMERGENCIA",
+                acoes_recomendadas=["Não medicar em casa", "Procurar hospital veterinário presencial urgente"],
+                origem_resposta="Guardrail Ético-Farmacológico PetGuardian",
+                sources_used=[
+                    RetrievedSource(
+                        id="tox_12",
+                        source="Protocolo de Toxicologia Pet Guardian",
+                        category="toxicology",
+                        title="Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
                         similarity_score=1.0
                     )
                 ],
@@ -120,22 +165,32 @@ class ChatService:
 
         # 3. Construção do Contexto Estruturado do Pet
         contexto_pet_str = ""
-        if request.petContext and request.petContext.nome:
-            p = request.petContext
-            partes_contexto = [
-                f"Nome: {p.nome}",
-                f"Raça: {p.raca or 'SRD'}",
-                f"Porte: {p.porte or 'médio'}",
-                f"Idade: {p.idade if p.idade is not None else 'não informada'} anos",
-                f"Peso: {p.peso or 'não informado'} kg"
-            ]
-            if p.alergias:
-                partes_contexto.append(f"Alergias Conhecidas: {p.alergias}")
-            if p.medicamentos:
-                partes_contexto.append(f"Medicamentos Contínuos: {p.medicamentos}")
-            if p.ultimaVacina:
-                partes_contexto.append(f"Última Vacina: {p.ultimaVacina}")
-            contexto_pet_str = "[Dados do Pet Ativo: " + ", ".join(partes_contexto) + "]"
+        p = request.petContext
+        if p:
+            p_nome = getattr(p, "nome", None) if not isinstance(p, dict) else p.get("nome")
+            p_raca = getattr(p, "raca", None) if not isinstance(p, dict) else p.get("raca")
+            p_porte = getattr(p, "porte", None) if not isinstance(p, dict) else p.get("porte")
+            p_idade = getattr(p, "idade", None) if not isinstance(p, dict) else p.get("idade")
+            p_peso = getattr(p, "peso", None) if not isinstance(p, dict) else p.get("peso")
+            p_alergias = getattr(p, "alergias", None) if not isinstance(p, dict) else p.get("alergias")
+            p_meds = getattr(p, "medicamentos", None) if not isinstance(p, dict) else p.get("medicamentos")
+            p_vacina = getattr(p, "ultimaVacina", None) if not isinstance(p, dict) else p.get("ultimaVacina")
+
+            if p_nome:
+                partes_contexto = [
+                    f"Nome: {p_nome}",
+                    f"Raça: {p_raca or 'SRD'}",
+                    f"Porte: {p_porte or 'médio'}",
+                    f"Idade: {p_idade if p_idade is not None else 'não informada'} anos",
+                    f"Peso: {p_peso or 'não informado'} kg"
+                ]
+                if p_alergias:
+                    partes_contexto.append(f"Alergias Conhecidas: {p_alergias}")
+                if p_meds:
+                    partes_contexto.append(f"Medicamentos Contínuos: {p_meds}")
+                if p_vacina:
+                    partes_contexto.append(f"Última Vacina: {p_vacina}")
+                contexto_pet_str = "[Dados do Pet Ativo: " + ", ".join(partes_contexto) + "]"
 
         # 4. Montagem do Prompt Fundamentado (RAG Prompt Template)
         prompt_fundamentado = formatar_prompt_rag(

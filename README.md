@@ -105,8 +105,8 @@ Para triagem veterinária e orientação clínica preventiva de cães e gatos, a
                    │                                   │
                    ▼ (Inferência Primária)             ▼ (Fallback de Rede)
     ┌─────────────────────────────┐     ┌─────────────────────────────┐
-    │  GROQ CLOUD (LPU)           │     │  GOOGLE GEMINI              │
-    │  Modelo: openai/gpt-oss-120b│     │  Modelo: gemini-2.5-flash   │
+    │  GROQ CLOUD (LPU)           │     │  GOOGLE GEMINI (FALLBACK)   │
+    │  Modelo: openai/gpt-oss-120b│     │  Modelo: gemini-3.5-flash-lite│
     │  Latência: ~350ms           │     │                             │
     └──────────────┬──────────────┘     └──────────────┬──────────────┘
                    │                                   │
@@ -212,6 +212,7 @@ MODEL_NAME=openai/gpt-oss-120b
 
 # Provedor Fallback Google Gemini
 GEMINI_API_KEY=sua_chave_gemini_aqui
+FALLBACK_MODEL_NAME=gemini-3.5-flash-lite
 
 PORT=8000
 ```
@@ -223,6 +224,19 @@ pip install -r requirements.txt
 python api.py
 ```
 A documentação Swagger interativa ficará disponível em `http://localhost:8000/docs`.
+
+### 🧪 Suíte de Homologação & Demonstração dos 4 Cenários (Vídeo Pitch)
+Para auditar os 4 cenários clínicos, a telemetria do ChromaDB e os guardrails em tempo real:
+```bash
+# Execução direta em memória (validação instantânea de QA):
+python deploy_guardianai_render/test_sprint4_scenarios.py --mode local
+
+# Execução cadenciada para demonstração no vídeo pitch (1 segundo por cenário):
+python deploy_guardianai_render/test_sprint4_scenarios.py --mode local --delay 1.0
+
+# Execução via HTTP contra API local ou Render:
+python deploy_guardianai_render/test_sprint4_scenarios.py --mode api --url http://localhost:8000
+```
 
 ### Deploy no Render
 A aplicação está calibrada para deploy automático através do arquivo [`render.yaml`](./deploy_guardianai_render/render.yaml), rodando com comando:

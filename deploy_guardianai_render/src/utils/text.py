@@ -75,7 +75,29 @@ MAPA_EXPANSAO_SEMANTICA: Dict[str, List[str]] = {
     "osso": ["osso", "perfuracao", "galinha", "cozido", "obstrucao"],
     "ossos": ["osso", "perfuracao", "galinha", "cozido", "obstrucao"],
     "gato": ["gato", "felino", "urinaria", "flutd", "agua", "sache", "areia"],
-    "gatos": ["gato", "felino", "urinaria", "flutd", "agua", "sache", "areia"]
+    "gatos": ["gato", "felino", "urinaria", "flutd", "agua", "sache", "areia"],
+    "morfina": ["morfina", "tramadol", "opioide", "receita", "dosagem", "prescricao", "medicamento", "controlado"],
+    "tramadol": ["tramadol", "morfina", "opioide", "receita", "dosagem", "prescricao", "controlado"],
+    "receita": ["receita", "prescricao", "dosagem", "morfina", "antibiotico", "corticoide", "medicamento"],
+    "prescricao": ["prescricao", "receita", "dosagem", "medicamento", "controlado"],
+    "injetavel": ["injetavel", "morfina", "dosagem", "medicamento", "prescricao"],
+    "dosagem": ["dosagem", "posologia", "receita", "prescricao", "medicamento", "morfina"],
+    "antibiotico": ["antibiotico", "receita", "prescricao", "dosagem", "medicamento"],
+    "corticoide": ["corticoide", "prednisolona", "dexametasona", "receita", "dosagem", "medicamento"],
+    "vacina": ["vacina", "filhote", "imunizacao", "v8", "v10", "pediatrico"],
+    "vacinas": ["vacina", "filhote", "imunizacao", "v8", "v10", "pediatrico"],
+    "vacinacao": ["vacina", "filhote", "imunizacao", "pediatrico"],
+    "dente": ["dentes", "tartaro", "escovacao", "pequeno", "oral"],
+    "dentes": ["dentes", "tartaro", "escovacao", "pequeno", "oral"],
+    "escovacao": ["escovacao", "dentes", "tartaro", "pequeno"],
+    "tartaro": ["tartaro", "dentes", "escovacao", "pequeno"],
+    "alimentacao": ["alimentacao", "nutricao", "racao", "transicao"],
+    "nutricao": ["nutricao", "alimentacao", "racao", "transicao"],
+    "displasia": ["displasia", "articulacao", "grande", "porte", "cartilagem"],
+    "articulacao": ["articulacao", "displasia", "grande", "condroitina"],
+    "articulacoes": ["articulacao", "displasia", "grande", "condroitina"],
+    "checkup": ["check-up", "senior", "idoso", "geriatrico", "sdma", "semestral"],
+    "sdma": ["sdma", "rins", "renal", "senior", "idoso", "check-up"]
 }
 
 def normalizar_texto(texto: str) -> str:

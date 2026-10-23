@@ -6,7 +6,7 @@ import logging
 import urllib.request
 import urllib.error
 from typing import Optional, List, Dict, Any
-from src.core.config import MODEL_NAME, GEMINI_API_KEY
+from src.core.config import FALLBACK_MODEL_NAME, GEMINI_API_KEY
 from src.core.prompts import SYSTEM_INSTRUCTION
 from src.schemas.chat import MensagemHistorico
 
@@ -75,7 +75,7 @@ class GeminiService:
         }
         headers = {"Content-Type": "application/json"}
         body_bytes = json.dumps(payload).encode("utf-8")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_NAME}:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{FALLBACK_MODEL_NAME}:generateContent?key={api_key}"
 
         try:
             req = urllib.request.Request(url, data=body_bytes, headers=headers, method="POST")
@@ -88,7 +88,7 @@ class GeminiService:
                         if parts and "text" in parts[0]:
                             return parts[0]["text"]
         except Exception as e:
-            logger.warning(f"[Gemini REST] Falha na chamada ({MODEL_NAME}): {e}")
+            logger.warning(f"[Gemini REST] Falha na chamada ({FALLBACK_MODEL_NAME}): {e}")
         return None
 
     @classmethod
@@ -122,7 +122,7 @@ class GeminiService:
             ))
 
             response = client.models.generate_content(
-                model=MODEL_NAME,
+                model=FALLBACK_MODEL_NAME,
                 contents=contents_sdk,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
@@ -133,7 +133,7 @@ class GeminiService:
             if response and response.text:
                 return response.text
         except Exception as e:
-            logger.warning(f"[Gemini SDK] Falha na chamada ({MODEL_NAME}): {e}")
+            logger.warning(f"[Gemini SDK] Falha na chamada ({FALLBACK_MODEL_NAME}): {e}")
         return None
 
     @classmethod

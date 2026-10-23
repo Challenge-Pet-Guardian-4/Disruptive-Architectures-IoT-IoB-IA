@@ -81,10 +81,15 @@ class ChromaVectorStore:
                 return 0
         return 0
 
-    def seed_knowledge_base(self, chunks: List[Dict[str, Any]]) -> int:
+    def seed_knowledge_base(
+        self,
+        chunks: List[Dict[str, Any]],
+        embeddings: Optional[List[List[float]]] = None
+    ) -> int:
         """
         Carrega e indexa todos os chunks clínicos da base de conhecimento no ChromaDB.
-        Idempotente: atualiza ou insere (upsert) para evitar duplicações.
+        Recebe a lista de embeddings de 128 dimensões do LocalSemanticEmbedder
+        e os persiste diretamente no HNSW sem tentar baixar modelos ONNX externos no Render (512MB RAM).
         """
         if not self._is_ready or self._collection is None:
             logger.warning("ChromaDB inativo; carga inicial armazenada no índice vetorial da memória.")
@@ -92,34 +97,41 @@ class ChromaVectorStore:
 
         try:
             ids = [chunk["id"] for chunk in chunks]
-            documents = [
-                f"{chunk['title']}. {chunk['content']} Palavras-chave: {' '.join(chunk.get('keywords', []))}"
-                for chunk in chunks
-            ]
+            documents = [chunk["content"] for chunk in chunks]
             metadatas = [
                 {
                     "source": str(chunk.get("source", "knowledge_base")),
                     "category": str(chunk.get("category", "geral")),
                     "title": str(chunk.get("title", "")),
-                    "urgency": str(chunk.get("urgency", "moderada"))
+                    "urgency": str(chunk.get("urgency", "moderada")),
+                    "content": str(chunk.get("content", ""))
                 }
                 for chunk in chunks
             ]
 
-            self._collection.upsert(
-                ids=ids,
-                documents=documents,
-                metadatas=metadatas
-            )
+            upsert_kwargs: Dict[str, Any] = {
+                "ids": ids,
+                "documents": documents,
+                "metadatas": metadatas,
+            }
+            if embeddings is not None:
+                upsert_kwargs["embeddings"] = embeddings
+
+            self._collection.upsert(**upsert_kwargs)
             logger.info(f"ChromaDB: {len(ids)} chunks clínicos indexados com persistência vetorial em {self.chroma_dir}.")
             return len(ids)
         except Exception as e:
             logger.error(f"Erro ao carregar chunks no ChromaDB: {e}")
             return 0
 
-    def search(self, query: str, top_k: int = 3, min_score: float = 0.18) -> List[Dict[str, Any]]:
+    def search(
+        self,
+        query_embedding: List[float],
+        top_k: int = 3,
+        min_score: float = 0.18
+    ) -> List[Dict[str, Any]]:
         """
-        Realiza consulta vetorial por similaridade no ChromaDB.
+        Realiza consulta vetorial por similaridade no ChromaDB com query_embeddings pré-calculados.
         Converte a distância de cosseno do Chroma (0 = idêntico, 2 = oposto)
         em score de similaridade (1.0 - distância) normalizado.
         """
@@ -128,7 +140,7 @@ class ChromaVectorStore:
 
         try:
             results = self._collection.query(
-                query_texts=[query],
+                query_embeddings=[query_embedding],
                 n_results=top_k,
                 include=["documents", "metadatas", "distances"]
             )
@@ -143,16 +155,15 @@ class ChromaVectorStore:
                 results["metadatas"][0],
                 results["distances"][0]
             ):
-                # Distância de cosseno em HNSW: dist = 1 - cos(theta)
-                # Logo, similaridade = 1.0 - dist
                 score = round(max(0.0, 1.0 - float(dist)), 4)
                 if score >= min_score:
+                    conteudo_limpo = meta.get("content", doc_text) if meta else doc_text
                     matched.append({
                         "id": doc_id,
-                        "source": meta.get("source", "chromadb_vector_store"),
-                        "category": meta.get("category", "geral"),
-                        "title": meta.get("title", ""),
-                        "content": doc_text,
+                        "source": meta.get("source", "chromadb_vector_store") if meta else "chromadb_vector_store",
+                        "category": meta.get("category", "geral") if meta else "geral",
+                        "title": meta.get("title", "") if meta else "",
+                        "content": conteudo_limpo,
                         "similarity_score": score,
                         "vector_db": "ChromaDB"
                     })

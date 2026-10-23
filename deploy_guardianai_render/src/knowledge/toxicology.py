@@ -154,14 +154,15 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
         "id": "tox_12",
         "source": "Protocolo de Toxicologia Pet Guardian",
         "category": "toxicology",
-        "title": "Veto Absoluto a Medicamentos Humanos (Paracetamol, Ibuprofeno e Dipirona sem Prescrição)",
+        "title": "Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
         "content": (
-            "Medicamentos de uso humano são formulados para o metabolismo do fígado e rins humanos e podem ser FATAIS para pets. "
-            "O Paracetamol é ALTAMENTE LETAL para gatos mesmo em doses mínimas (causa meta-hemoglobinemia, sangue achocolatado e asfixia interna) "
-            "e altamente hepatotóxico para cães. Anti-inflamatórios como Ibuprofeno, Aspirina e Diclofenaco causam úlceras gástricas perfuradas, "
-            "hemorragias digestivas e insuficiência renal aguda fulminante. Todo alívio de dor deve ser prescrito exclusivamente por médico-veterinário."
+            "Medicamentos de uso humano, analgésicos opioides (morfina, tramadol), antibióticos e corticoides administrados sem avaliação presencial "
+            "são ESTRITAMENTE PROIBIDOS e podem ser FATAIS para pets. A indicação de receitas ou dosagem de morfina injetável e fármacos controlados "
+            "em domicílio é expressamente vedada pelo risco iminente de depressão respiratória grave, coma e óbito. "
+            "O Paracetamol é ALTAMENTE LETAL para gatos mesmo em doses mínimas (meta-hemoglobinemia e asfixia). "
+            "Anti-inflamatórios como Ibuprofeno causam hemorragias digestivas graves. Qualquer alívio de dor ou prescrição exige exame clínico presencial urgente."
         ),
-        "keywords": ["paracetamol", "tylenol", "ibuprofeno", "aspirina", "diclofenaco", "dorflex", "dipirona humana", "remedio humano", "medicamento de gente"]
+        "keywords": ["morfina", "tramadol", "receita", "dosagem", "prescricao", "injetavel", "opioide", "antibiotico", "corticoide", "paracetamol", "tylenol", "ibuprofeno", "aspirina", "diclofenaco", "remedio humano"]
     },
     {
         "id": "tox_13",

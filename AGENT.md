@@ -19,7 +19,7 @@ Como o container gratuito do Render possui **512 MB de RAM**:
 
 ### 2.2. Provedor Principal Groq LPU + Fallback Gemini
 - **Groq Cloud (openai/gpt-oss-120b):** Modelo MoE open-weight de 120 bilhões de parâmetros rodando em chips LPU (*Language Processing Units*), fornecendo inferência com tempo de resposta médio de ~350 ms.
-- **Google Gemini (gemini-2.5-flash):** Fallback automático de contingência via SDK oficial e REST caso ocorra qualquer indisponibilidade de cota.
+- **Google Gemini (gemini-3.5-flash-lite):** Fallback automático de contingência via SDK oficial e REST caso ocorra qualquer indisponibilidade de cota.
 
 ---
 

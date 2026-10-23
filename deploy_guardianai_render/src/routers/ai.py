@@ -95,6 +95,6 @@ def vector_store_status_endpoint() -> dict:
         "storage_path": CHROMA_DIR,
         "collection_name": COLLECTION_NAME,
         "indexed_chunks": vs.count,
-        "vector_dimensions": 384,
+        "vector_dimensions": 128,
         "distance_metric": "cosine"
     }

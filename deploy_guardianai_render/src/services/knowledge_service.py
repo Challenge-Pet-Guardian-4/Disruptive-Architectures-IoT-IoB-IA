@@ -19,6 +19,7 @@ class KnowledgeService:
     _vocabulario_idf: Dict[str, float] = {}
     _embeddings_chunks: List[List[float]] = []
     _tokens_chunks: List[Set[str]] = []
+    _tokens_chunks_map: Dict[str, Set[str]] = {}
     _chunks_indexados: List[Dict[str, Any]] = []
     _indice_inicializado: bool = False
 
@@ -38,12 +39,14 @@ class KnowledgeService:
         # 1. Contagem de frequência documental (DF) e indexação de tokens
         doc_freqs: Counter = Counter()
         cls._tokens_chunks = []
+        cls._tokens_chunks_map = {}
         for chunk in cls._chunks_indexados:
             texto_completo = f"{chunk['title']} {chunk['content']} {' '.join(chunk.get('keywords', []))}"
             tokens = tokenizar_com_ngrams(texto_completo, n_max=2)
             tokens_expandidos = expansao_semantica_veterinaria(tokens)
             set_tokens = set(tokens_expandidos)
             cls._tokens_chunks.append(set_tokens)
+            cls._tokens_chunks_map[chunk["id"]] = set_tokens
             for t in set_tokens:
                 doc_freqs[t] += 1
 
@@ -61,11 +64,11 @@ class KnowledgeService:
 
         cls._indice_inicializado = True
 
-        # 4. Persistência e indexação no Banco de Dados Vetorial ChromaDB
+        # 4. Persistência e indexação no Banco de Dados Vetorial ChromaDB com embeddings de 128-D
         try:
             vector_store = get_vector_store()
             if vector_store.is_ready:
-                vector_store.seed_knowledge_base(cls._chunks_indexados)
+                vector_store.seed_knowledge_base(cls._chunks_indexados, embeddings=cls._embeddings_chunks)
         except Exception:
             pass
 
@@ -80,7 +83,7 @@ class KnowledgeService:
         Executa busca semântica vetorial por Similaridade de Cosseno:
         1. Consulta prioritária no Banco de Dados Vetorial ChromaDB (persistente em ./data/chroma).
         2. Fallback integrado para motor denso resiliente caso o banco vetorial esteja em aquecimento.
-        3. Filtra apenas chunks com score >= min_score.
+        3. Filtra apenas chunks com score >= min_score e pertinência semântica positiva.
         """
         if not cls._indice_inicializado:
             cls.inicializar_indice_rag()
@@ -88,15 +91,30 @@ class KnowledgeService:
         if not query or not query.strip():
             return {"chunks": [], "match_found": False, "top_score": 0.0}
 
+        # Geração de embeddings e tokens normalizados da pergunta
+        embedding_query = LocalSemanticEmbedder.gerar_embedding(query, idf_weights=cls._vocabulario_idf)
+        tokens_query = set(expansao_semantica_veterinaria(tokenizar_com_ngrams(query, n_max=2)))
+
         # 1. Busca prioritária no Banco Vetorial ChromaDB (HNSW com Cosseno)
         try:
             vector_store = get_vector_store()
             if vector_store.is_ready and vector_store.count > 0:
-                chroma_results = vector_store.search(query=query, top_k=top_k, min_score=min_score)
-                if chroma_results:
-                    maior_score = max(c["similarity_score"] for c in chroma_results)
+                chroma_results = vector_store.search(
+                    query_embedding=embedding_query,
+                    top_k=top_k,
+                    min_score=min_score
+                )
+                # Filtra por pertinência semântica para prevenção de alucinação em temas fora de escopo
+                filtered_chroma = []
+                for c in chroma_results:
+                    chunk_tokens = cls._tokens_chunks_map.get(c["id"], set())
+                    if not chunk_tokens or tokens_query.intersection(chunk_tokens):
+                        filtered_chroma.append(c)
+
+                if filtered_chroma:
+                    maior_score = max(c["similarity_score"] for c in filtered_chroma)
                     return {
-                        "chunks": chroma_results,
+                        "chunks": filtered_chroma,
                         "match_found": True,
                         "top_score": maior_score,
                         "engine": "ChromaDB (HNSW Cosine)"
@@ -105,9 +123,6 @@ class KnowledgeService:
             pass
 
         # 2. Motor Vetorial Denso Resiliente
-        embedding_query = LocalSemanticEmbedder.gerar_embedding(query, idf_weights=cls._vocabulario_idf)
-        tokens_query = set(expansao_semantica_veterinaria(tokenizar_com_ngrams(query, n_max=2)))
-
         candidatos: List[Dict[str, Any]] = []
         maior_score = 0.0
 
