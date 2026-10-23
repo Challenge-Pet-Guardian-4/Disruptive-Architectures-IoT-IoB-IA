@@ -2,7 +2,7 @@
 Serviço de Conhecimento: Motor RAG com Embeddings Vetoriais Locais e Similaridade de Cosseno — Pet Guardian
 """
 import math
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 from collections import Counter
 from src.knowledge import BASE_CHUNKS_RAG, CHUNKS_TOXICOLOGY, CHUNKS_PREVENTIVE_CARE, CHUNKS_FAQ
 from src.utils.text import normalizar_texto, tokenizar_com_ngrams, expansao_semantica_veterinaria
