@@ -6,7 +6,7 @@ import logging
 import urllib.request
 import urllib.error
 from typing import Optional, List, Dict, Any
-from src.core.config import MODEL_NAME, GROQ_API_KEY
+from src.core.config import MODEL_NAME, DEFAULT_MODEL_NAME, GROQ_API_KEY
 from src.core.prompts import SYSTEM_INSTRUCTION
 from src.schemas.chat import MensagemHistorico
 
@@ -22,7 +22,7 @@ except ImportError:
 class GroqService:
     """
     Gerencia a comunicação com a API do Groq (ultra-baixa latência em LPU),
-    consumindo o modelo open-weight 'openai/gpt-oss-120b'.
+    consumindo o modelo selecionado no .env ou o padrão oficial 'openai/gpt-oss-120b'.
     Possui suporte tanto via SDK oficial 'groq' quanto via fallback REST nativo (urllib).
     Implementa janela deslizante para preservação de histórico sem contaminação contextual.
     """
@@ -63,13 +63,15 @@ class GroqService:
     def chamar_via_rest(
         cls,
         api_key: str,
-        messages: List[Dict[str, str]]
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None
     ) -> Optional[str]:
         """
         Fallback resiliente utilizando HTTP REST nativo sem dependências externas.
         """
+        target_model = model or MODEL_NAME
         payload = {
-            "model": MODEL_NAME,
+            "model": target_model,
             "messages": messages,
             "temperature": 0.6,
             "max_tokens": 800
@@ -95,18 +97,19 @@ class GroqService:
         except urllib.error.HTTPError as e:
             try:
                 erro_detalhe = e.read().decode("utf-8")
-                logger.warning(f"[Groq REST] Erro HTTP {e.code} ({MODEL_NAME}): {erro_detalhe}")
+                logger.warning(f"[Groq REST] Erro HTTP {e.code} ({target_model}): {erro_detalhe}")
             except Exception:
-                logger.warning(f"[Groq REST] Erro HTTP {e.code} ({MODEL_NAME})")
+                logger.warning(f"[Groq REST] Erro HTTP {e.code} ({target_model})")
         except Exception as e:
-            logger.warning(f"[Groq REST] Falha na chamada ({MODEL_NAME}): {e}")
+            logger.warning(f"[Groq REST] Falha na chamada ({target_model}): {e}")
         return None
 
     @classmethod
     def chamar_via_sdk(
         cls,
         api_key: str,
-        messages: List[Dict[str, str]]
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None
     ) -> Optional[str]:
         """
         Executa chamada de inferência via biblioteca oficial 'groq'.
@@ -114,10 +117,11 @@ class GroqService:
         if not HAS_GROQ_SDK or Groq is None:
             return None
 
+        target_model = model or MODEL_NAME
         try:
             client = Groq(api_key=api_key)
             completion = client.chat.completions.create(
-                model=MODEL_NAME,
+                model=target_model,
                 messages=messages,  # type: ignore[arg-type]
                 temperature=0.6,
                 max_tokens=800
@@ -125,7 +129,7 @@ class GroqService:
             if completion.choices and completion.choices[0].message.content:
                 return completion.choices[0].message.content.strip()
         except Exception as e:
-            logger.warning(f"[Groq SDK] Falha na chamada ({MODEL_NAME}): {e}")
+            logger.warning(f"[Groq SDK] Falha na chamada ({target_model}): {e}")
         return None
 
     @classmethod
@@ -135,17 +139,35 @@ class GroqService:
         historico: Optional[List[MensagemHistorico]] = None
     ) -> Optional[str]:
         """
-        Executa inferência com a API do Groq, priorizando o SDK e alternando para REST caso necessário.
+        Executa inferência com a API do Groq, priorizando o modelo selecionado no .env (MODEL_NAME).
+        Caso o modelo configurado não seja identificado ou falhe, recorre automaticamente
+        ao modelo padrão homologado (DEFAULT_MODEL_NAME).
         """
         if not GROQ_API_KEY:
             return None
 
         messages = cls.formatar_mensagens(prompt_atual, historico)
 
-        # 1. Tenta SDK oficial groq
-        texto_sdk = cls.chamar_via_sdk(GROQ_API_KEY, messages)
+        # 1. Tenta prioritariamente com o modelo escolhido pelo usuário no .env
+        texto_sdk = cls.chamar_via_sdk(GROQ_API_KEY, messages, model=MODEL_NAME)
         if texto_sdk:
             return texto_sdk
 
-        # 2. Tenta REST nativo direto
-        return cls.chamar_via_rest(GROQ_API_KEY, messages)
+        texto_rest = cls.chamar_via_rest(GROQ_API_KEY, messages, model=MODEL_NAME)
+        if texto_rest:
+            return texto_rest
+
+        # 2. Se o modelo selecionado falhar e for diferente do padrão, recorre ao modelo padrão homologado
+        if MODEL_NAME != DEFAULT_MODEL_NAME:
+            logger.info(
+                f"[Groq] Modelo customizado '{MODEL_NAME}' indisponível. Recorrendo ao modelo padrão '{DEFAULT_MODEL_NAME}'."
+            )
+            texto_def_sdk = cls.chamar_via_sdk(GROQ_API_KEY, messages, model=DEFAULT_MODEL_NAME)
+            if texto_def_sdk:
+                return texto_def_sdk
+
+            texto_def_rest = cls.chamar_via_rest(GROQ_API_KEY, messages, model=DEFAULT_MODEL_NAME)
+            if texto_def_rest:
+                return texto_def_rest
+
+        return None

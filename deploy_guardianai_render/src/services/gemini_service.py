@@ -6,7 +6,7 @@ import logging
 import urllib.request
 import urllib.error
 from typing import Optional, List, Dict, Any
-from src.core.config import FALLBACK_MODEL_NAME, GEMINI_API_KEY
+from src.core.config import FALLBACK_MODEL_NAME, DEFAULT_FALLBACK_MODEL_NAME, GEMINI_API_KEY
 from src.core.prompts import SYSTEM_INSTRUCTION
 from src.schemas.chat import MensagemHistorico
 
@@ -60,8 +60,10 @@ class GeminiService:
         cls,
         api_key: str,
         prompt_atual: str,
-        historico: Optional[List[MensagemHistorico]] = None
+        historico: Optional[List[MensagemHistorico]] = None,
+        model: Optional[str] = None
     ) -> Optional[str]:
+        target_model = model or FALLBACK_MODEL_NAME
         contents = cls.formatar_contents_rest(prompt_atual, historico)
         payload = {
             "contents": contents,
@@ -75,7 +77,7 @@ class GeminiService:
         }
         headers = {"Content-Type": "application/json"}
         body_bytes = json.dumps(payload).encode("utf-8")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{FALLBACK_MODEL_NAME}:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key}"
 
         try:
             req = urllib.request.Request(url, data=body_bytes, headers=headers, method="POST")
@@ -88,7 +90,7 @@ class GeminiService:
                         if parts and "text" in parts[0]:
                             return parts[0]["text"]
         except Exception as e:
-            logger.warning(f"[Gemini REST] Falha na chamada ({FALLBACK_MODEL_NAME}): {e}")
+            logger.warning(f"[Gemini REST] Falha na chamada ({target_model}): {e}")
         return None
 
     @classmethod
@@ -96,11 +98,13 @@ class GeminiService:
         cls,
         api_key: str,
         prompt_atual: str,
-        historico: Optional[List[MensagemHistorico]] = None
+        historico: Optional[List[MensagemHistorico]] = None,
+        model: Optional[str] = None
     ) -> Optional[str]:
         if not HAS_GENAI_SDK or genai is None or types is None:
             return None
 
+        target_model = model or FALLBACK_MODEL_NAME
         try:
             client = genai.Client(api_key=api_key)
 
@@ -122,7 +126,7 @@ class GeminiService:
             ))
 
             response = client.models.generate_content(
-                model=FALLBACK_MODEL_NAME,
+                model=target_model,
                 contents=contents_sdk,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
@@ -133,7 +137,7 @@ class GeminiService:
             if response and response.text:
                 return response.text
         except Exception as e:
-            logger.warning(f"[Gemini SDK] Falha na chamada ({FALLBACK_MODEL_NAME}): {e}")
+            logger.warning(f"[Gemini SDK] Falha na chamada ({target_model}): {e}")
         return None
 
     @classmethod
@@ -143,15 +147,32 @@ class GeminiService:
         historico: Optional[List[MensagemHistorico]] = None
     ) -> Optional[str]:
         """
-        Executa inferência com chave de API, tentando o SDK oficial e utilizando REST como fallback.
+        Executa inferência com chave de API, priorizando o modelo selecionado no .env (FALLBACK_MODEL_NAME).
+        Caso o modelo não responda ou não seja identificado, recorre ao modelo padrão homologado (DEFAULT_FALLBACK_MODEL_NAME).
         """
         if not GEMINI_API_KEY:
             return None
 
-        # 1. Tenta SDK oficial google-genai
-        texto_sdk = cls.chamar_via_sdk(GEMINI_API_KEY, prompt_atual, historico)
+        # 1. Tenta modelo configurado
+        texto_sdk = cls.chamar_via_sdk(GEMINI_API_KEY, prompt_atual, historico, model=FALLBACK_MODEL_NAME)
         if texto_sdk:
             return texto_sdk
 
-        # 2. Tenta REST direto
-        return cls.chamar_via_rest(GEMINI_API_KEY, prompt_atual, historico)
+        texto_rest = cls.chamar_via_rest(GEMINI_API_KEY, prompt_atual, historico, model=FALLBACK_MODEL_NAME)
+        if texto_rest:
+            return texto_rest
+
+        # 2. Se falhar e for diferente do padrão oficial, tenta o padrão oficial
+        if FALLBACK_MODEL_NAME != DEFAULT_FALLBACK_MODEL_NAME:
+            logger.info(
+                f"[Gemini] Modelo customizado '{FALLBACK_MODEL_NAME}' indisponível. Recorrendo ao modelo padrão '{DEFAULT_FALLBACK_MODEL_NAME}'."
+            )
+            texto_def_sdk = cls.chamar_via_sdk(GEMINI_API_KEY, prompt_atual, historico, model=DEFAULT_FALLBACK_MODEL_NAME)
+            if texto_def_sdk:
+                return texto_def_sdk
+
+            texto_def_rest = cls.chamar_via_rest(GEMINI_API_KEY, prompt_atual, historico, model=DEFAULT_FALLBACK_MODEL_NAME)
+            if texto_def_rest:
+                return texto_def_rest
+
+        return None
