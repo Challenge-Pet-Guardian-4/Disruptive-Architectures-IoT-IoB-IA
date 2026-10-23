@@ -216,7 +216,7 @@ def executar_bateria(mode: str = "local", base_url: str = "http://localhost:8000
     # FASE 2: Execução dos 4 Cenários Clínicos Oficiais
     banner_secao("FASE 2", "EXECUÇÃO DOS 4 CENÁRIOS CLÍNICOS OFICIAIS (AUDITORIA RAG & GUARDRAILS)")
     
-    cenarios = [
+    cenarios: List[Dict[str, Any]] = [
         {
             "id": "CENÁRIO 1",
             "nome": "Triagem Toxicológica por Sinônimo (Bolo de Cacau -> Teobromina)",
@@ -339,15 +339,28 @@ def executar_bateria(mode: str = "local", base_url: str = "http://localhost:8000
         if delay > 0:
             time.sleep(delay)
         t0 = time.perf_counter()
+        payload: Dict[str, Any] = item.get("payload", {}) if isinstance(item.get("payload"), dict) else {}
+        pergunta_txt = str(payload.get("pergunta", ""))
         try:
             if mode == "api":
                 resp_dict = http_request(
                     f"{base_url.rstrip('/')}/ai/chat",
                     method="POST",
-                    payload=item["payload"],
+                    payload=payload,
                 )
             else:
-                req_obj = ChatRequest(**item["payload"])
+                pet_context_raw = payload.get("petContext")
+                pet_ctx_obj: Optional[PetContextPayload] = None
+                if isinstance(pet_context_raw, dict):
+                    pet_ctx_obj = PetContextPayload(**pet_context_raw)
+                elif pet_context_raw is not None:
+                    pet_ctx_obj = pet_context_raw
+
+                req_obj = ChatRequest(
+                    pergunta=pergunta_txt,
+                    petContext=pet_ctx_obj,
+                    sessionId=payload.get("sessionId")
+                )
                 resp_obj = ChatService.processar_chat(req_obj)
                 resp_dict = resp_obj.model_dump()
 
@@ -355,7 +368,7 @@ def executar_bateria(mode: str = "local", base_url: str = "http://localhost:8000
             exibir_resultado_cenario(
                 item["id"],
                 item["nome"],
-                item["payload"]["pergunta"],
+                pergunta_txt,
                 item["pet_str"],
                 resp_dict,
                 elapsed_ms,
@@ -425,7 +438,14 @@ def executar_bateria(mode: str = "local", base_url: str = "http://localhost:8000
                 payload=pet_insight_payload,
             )
         else:
-            pet_ctx = PetContextPayload(**pet_insight_payload)
+            pet_ctx = PetContextPayload(
+                id=103,
+                nome="Thor",
+                raca="Labrador Retriever",
+                porte="grande",
+                idade=9,
+                peso=34.0,
+            )
             resp_ins_obj = InsightsService.gerar_insights(pet_ctx)
             resp_insights = resp_ins_obj.model_dump()
 

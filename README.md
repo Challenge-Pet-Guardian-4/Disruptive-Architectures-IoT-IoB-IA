@@ -106,7 +106,7 @@ Para triagem veterinária e orientação clínica preventiva de cães e gatos, a
                    ▼ (Inferência Primária)             ▼ (Fallback de Rede)
     ┌─────────────────────────────┐     ┌─────────────────────────────┐
     │  GROQ CLOUD (LPU)           │     │  GOOGLE GEMINI (FALLBACK)   │
-    │  Modelo: openai/gpt-oss-120b│     │  Modelo: gemini-3.5-flash-lite│
+    │  Model: openai/gpt-oss-120b │     │ Model: gemini-3.5-flash-lite│
     │  Latência: ~350ms           │     │                             │
     └──────────────┬──────────────┘     └──────────────┬──────────────┘
                    │                                   │
