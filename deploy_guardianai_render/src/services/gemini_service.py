@@ -13,8 +13,8 @@ from src.schemas.chat import MensagemHistorico
 logger = logging.getLogger("GuardianAI.GeminiService")
 
 try:
-    from google import genai
-    from google.genai import types
+    from google import genai  # type: ignore[import-not-found, import-untyped]  # pyright: ignore[reportMissingImports]
+    from google.genai import types  # type: ignore[import-not-found, import-untyped]  # pyright: ignore[reportMissingImports]
     HAS_GENAI_SDK = True
 except ImportError:
     genai = None

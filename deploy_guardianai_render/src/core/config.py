@@ -24,7 +24,7 @@ def _carregar_env_manual(caminho: Path) -> None:
 
 # 1. Carrega via python-dotenv se disponível
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore[import-not-found]  # pyright: ignore[reportMissingImports]
     load_dotenv()
 except ImportError:
     pass

@@ -13,7 +13,7 @@ from src.schemas.chat import MensagemHistorico
 logger = logging.getLogger("GuardianAI.GroqService")
 
 try:
-    from groq import Groq
+    from groq import Groq  # type: ignore[import-not-found, import-untyped]  # pyright: ignore[reportMissingImports]
     HAS_GROQ_SDK = True
 except ImportError:
     Groq = None

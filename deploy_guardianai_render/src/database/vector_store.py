@@ -39,8 +39,8 @@ class ChromaVectorStore:
     def _init_chroma(self) -> None:
         """Inicializa o cliente persistente do ChromaDB."""
         try:
-            import chromadb
-            from chromadb.config import Settings
+            import chromadb  # type: ignore[import-not-found, import-untyped]  # pyright: ignore[reportMissingImports]
+            from chromadb.config import Settings  # type: ignore[import-not-found, import-untyped]  # pyright: ignore[reportMissingImports]
 
             self._client = chromadb.PersistentClient(
                 path=self.chroma_dir,
