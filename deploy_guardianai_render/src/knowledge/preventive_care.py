@@ -4,10 +4,13 @@ Catálogo expandido de protocolos pediátricos, adultos, geriátricos e de manej
 """
 from typing import Dict, Any, List
 
+_SOURCE = "Guia de Cuidados Preventivos Pet Guardian"
+
 CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     {
         "id": "prev_01",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "preventive_care",
         "title": "Protocolo Preventivo para Cães de Pequeno Porte (Saúde Oral, Traqueia e Coração)",
         "content": (
@@ -22,7 +25,8 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     },
     {
         "id": "prev_02",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "preventive_care",
         "title": "Protocolo Preventivo para Cães de Médio Porte (Manejo de Peso, Pele e Otites)",
         "content": (
@@ -36,7 +40,8 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     },
     {
         "id": "prev_03",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "moderada",
         "category": "preventive_care",
         "title": "Protocolo Preventivo para Cães de Grande e Gigante Porte (Articulações e Torção Gástrica)",
         "content": (
@@ -50,7 +55,8 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     },
     {
         "id": "prev_04",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "preventive_care",
         "title": "Protocolo Pediátrico Preventivo para Filhotes (Imunização e Janela de Socialização)",
         "content": (
@@ -60,11 +66,12 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
             "o filhote NÃO deve passear na rua, em praças ou manter contato com animais não imunizados até 15 dias após a conclusão da última "
             "dose da vacina múltipla. Vermifugação periódica mensal e alimentação com ração Super Premium Filhotes garantem o desenvolvimento esquelético ideal."
         ),
-        "keywords": ["filhote", "bebe", "puppy", "primeiras vacinas", "v8", "v10", "antirrabica", "socializacao", "passeio na rua", "vermifugo", "pediatrico"]
+        "keywords": ["filhote", "bebe", "puppy", "primeiras vacinas", "vacina", "vacinas", "v8", "v10", "antirrabica", "socializacao", "passeio na rua", "passeio", "vermifugo", "pediatrico", "cuidados preventivos"]
     },
     {
         "id": "prev_05",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "preventive_care",
         "title": "Protocolo Preventivo para Cães e Gatos Adultos (Manutenção da Imunidade e Antiparasitários)",
         "content": (
@@ -78,7 +85,8 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     },
     {
         "id": "prev_06",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "moderada",
         "category": "preventive_care",
         "title": "Protocolo Geriátrico Preventivo para Pets Sênior / Idosos (Check-up Semestral e Conforto)",
         "content": (
@@ -92,7 +100,8 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     },
     {
         "id": "prev_07",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "preventive_care",
         "title": "Protocolo Específico de Saúde Urinária e Hidratação para Felinos (Prevenção de FLUTD)",
         "content": (
@@ -106,7 +115,8 @@ CHUNKS_PREVENTIVE_CARE: List[Dict[str, Any]] = [
     },
     {
         "id": "prev_08",
-        "source": "Guia de Cuidados Preventivos Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "preventive_care",
         "title": "Manejo de Enriquecimento Ambiental e Prevenção de Bolas de Pelos em Gatos",
         "content": (

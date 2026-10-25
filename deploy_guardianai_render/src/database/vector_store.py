@@ -6,19 +6,23 @@ import os
 import logging
 from typing import List, Dict, Any, Optional
 
+from src.core.config import RAG_MIN_SCORE
+from src.utils.embeddings import LocalSemanticEmbedder
+
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 CHROMA_DIR = os.path.join(DATA_DIR, "chroma")
-COLLECTION_NAME = "petguardian_knowledge"
+# A dimensão compõe o nome: coleções com vetores de outro tamanho são incompatíveis no HNSW
+COLLECTION_NAME = f"petguardian_knowledge_{LocalSemanticEmbedder.DIMENSAO}d"
 
 class ChromaVectorStore:
     """
     Gerenciador do Banco de Dados Vetorial ChromaDB para o Pet Guardian.
     - Persistência física em disco em `./data/chroma`.
     - Coleção 'petguardian_knowledge' com indexação vetorial HNSW.
-    - Suporte a embeddings neurais locais (ONNX all-MiniLM-L6-v2) com fallback resiliente.
+    - Embeddings densos normalizados gerados pelo LocalSemanticEmbedder (512-D).
     """
 
     _instance: Optional["ChromaVectorStore"] = None
@@ -88,7 +92,7 @@ class ChromaVectorStore:
     ) -> int:
         """
         Carrega e indexa todos os chunks clínicos da base de conhecimento no ChromaDB.
-        Recebe a lista de embeddings de 128 dimensões do LocalSemanticEmbedder
+        Recebe a lista de embeddings do LocalSemanticEmbedder
         e os persiste diretamente no HNSW sem tentar baixar modelos ONNX externos no Render (512MB RAM).
         """
         if not self._is_ready or self._collection is None:
@@ -103,7 +107,7 @@ class ChromaVectorStore:
                     "source": str(chunk.get("source", "knowledge_base")),
                     "category": str(chunk.get("category", "geral")),
                     "title": str(chunk.get("title", "")),
-                    "urgency": str(chunk.get("urgency", "moderada")),
+                    "urgency": str(chunk.get("urgency", "baixa")),
                     "content": str(chunk.get("content", ""))
                 }
                 for chunk in chunks
@@ -128,7 +132,7 @@ class ChromaVectorStore:
         self,
         query_embedding: List[float],
         top_k: int = 3,
-        min_score: float = 0.18
+        min_score: float = RAG_MIN_SCORE
     ) -> List[Dict[str, Any]]:
         """
         Realiza consulta vetorial por similaridade no ChromaDB com query_embeddings pré-calculados.

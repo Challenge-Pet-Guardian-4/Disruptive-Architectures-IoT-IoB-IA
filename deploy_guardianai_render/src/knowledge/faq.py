@@ -4,10 +4,13 @@ Catálogo expandido de orientações cotidianas, condutas seguras e primeiros so
 """
 from typing import Dict, Any, List
 
+_SOURCE = "FAQ Oficial Pet Guardian"
+
 CHUNKS_FAQ: List[Dict[str, Any]] = [
     {
         "id": "faq_01",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Frutas Seguras e Permitidas para Cães (Petiscos Naturais)",
         "content": (
@@ -21,7 +24,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_02",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Legumes e Vegetais Seguros para Cães (Enriquecimento Nutricional)",
         "content": (
@@ -35,7 +39,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_03",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Proteínas Seguras (Frango, Carnes e Ovos) e o Perigo Fatal de Ossos Cozidos",
         "content": (
@@ -49,7 +54,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_04",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Pão, Massas e Laticínios (Intolerância à Lactose e Carboidratos)",
         "content": (
@@ -63,7 +69,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_05",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Diretrizes de Nutrição: Escolha e Transição Gradual de Ração",
         "content": (
@@ -77,7 +84,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_06",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Manejo Inicial de Sintomas Gastrointestinais (Vômitos e Diarreia)",
         "content": (
@@ -91,7 +99,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_07",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "faq",
         "title": "Proibição Vital de Indução Caseira de Vômito com Água Oxigenada ou Sal",
         "content": (
@@ -105,7 +114,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_08",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "faq",
         "title": "Primeiros Socorros para Engasgo e Obstrução de Vias Aéreas (Manobra de Heimlich)",
         "content": (
@@ -120,7 +130,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_09",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "faq",
         "title": "Insolação, Golpe de Calor e Hipertermia (Atenção a Cães Braquicefálicos)",
         "content": (
@@ -134,7 +145,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_10",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "alta",
         "category": "faq",
         "title": "Picadas de Insetos, Aranhas, Abelhas e Cobras (Reações Anafiláticas)",
         "content": (
@@ -148,7 +160,8 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
     },
     {
         "id": "faq_11",
-        "source": "FAQ Oficial Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "baixa",
         "category": "faq",
         "title": "Manejo Comportamental: Ansiedade de Separação e Medo de Trovões/Fogos",
         "content": (

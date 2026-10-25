@@ -4,10 +4,13 @@ Catálogo expandido de alimentos, plantas residenciais, produtos químicos e fá
 """
 from typing import Dict, Any, List
 
+_SOURCE = "Protocolo de Toxicologia Pet Guardian"
+
 CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     {
         "id": "tox_01",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Intoxicação por Chocolate e Derivados (Teobromina)",
         "content": (
@@ -21,7 +24,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_02",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Intoxicação Grave por Cacau Puro e Bolos/Doces de Cacau",
         "content": (
@@ -35,7 +39,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_03",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Toxicidade Renal Aguda por Uvas Frescas e Uvas-Passas",
         "content": (
@@ -48,7 +53,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_04",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Anemia Hemolítica Severa por Cebola, Alho e Alho-Poró",
         "content": (
@@ -61,7 +67,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_05",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Choque Hipoglicêmico Fulminante e Falência Hepática por Xilitol",
         "content": (
@@ -74,7 +81,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_06",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Toxicidade Neuromuscular por Nozes de Macadâmia",
         "content": (
@@ -87,7 +95,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_07",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Intoxicação Cardíaca por Café, Borra de Café e Energéticos",
         "content": (
@@ -100,7 +109,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_08",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Plantas Tóxicas Residenciais: Lírio (Letalidade Extrema para Felinos)",
         "content": (
@@ -113,7 +123,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_09",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Plantas Ornamentais Tóxicas: Comigo-Ninguém-Pode e Espada-de-São-Jorge",
         "content": (
@@ -126,7 +137,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_10",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Intoxicação por Produtos Químicos: Raticidas (Chumbinho / Anticoagulantes)",
         "content": (
@@ -139,7 +151,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_11",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Intoxicação por Produtos de Limpeza Domésticos (Água Sanitária e Cloro)",
         "content": (
@@ -152,7 +165,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_12",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
         "content": (
@@ -166,7 +180,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_13",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Perigo de Abacate (Toxina Persina) e Carambola (Caramboxina)",
         "content": (
@@ -179,7 +194,8 @@ CHUNKS_TOXICOLOGY: List[Dict[str, Any]] = [
     },
     {
         "id": "tox_14",
-        "source": "Protocolo de Toxicologia Pet Guardian",
+        "source": _SOURCE,
+        "urgency": "EMERGENCIA",
         "category": "toxicology",
         "title": "Perigo Fatal de Bebidas Alcoólicas e Massas de Pão Fermentadas Cruas",
         "content": (

@@ -12,7 +12,7 @@ class MensagemHistorico(BaseModel):
 class RetrievedSource(BaseModel):
     id: str = Field(..., description="Identificador único do trecho (chunk) recuperado")
     source: str = Field(..., description="Nome formal da fonte consultada para citação")
-    category: str = Field(..., description="Categoria clínica: 'toxicology', 'preventive_care', 'faq'")
+    category: str = Field(..., description="Categoria do conhecimento: 'toxicology', 'preventive_care', 'faq', 'behavior', 'hygiene_skin', 'reproduction', 'lifestyle', 'infectious_diseases'")
     title: str = Field(..., description="Título do tópico consultado")
     similarity_score: float = Field(..., description="Score de similaridade de cosseno (arredondado em 4 casas)")
 

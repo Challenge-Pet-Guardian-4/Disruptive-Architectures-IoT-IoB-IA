@@ -1,18 +1,22 @@
 """
 Serviço de Conhecimento: Motor RAG com Embeddings Vetoriais Locais e Similaridade de Cosseno — Pet Guardian
 """
+import logging
 import math
 from typing import Optional, Dict, Any, List, Set
 from collections import Counter
-from src.knowledge import BASE_CHUNKS_RAG, CHUNKS_TOXICOLOGY, CHUNKS_PREVENTIVE_CARE, CHUNKS_FAQ
+from src.core.config import RAG_MIN_SCORE
+from src.knowledge import BASE_CHUNKS_RAG, CHUNKS_PREVENTIVE_CARE
 from src.utils.text import normalizar_texto, tokenizar_com_ngrams, expansao_semantica_veterinaria
 from src.utils.embeddings import LocalSemanticEmbedder, calcular_similaridade_cosseno
 from src.database.vector_store import get_vector_store
 
+logger = logging.getLogger("GuardianAI.KnowledgeService")
+
 class KnowledgeService:
     """
     Serviço de Conhecimento Pet Guardian:
-    1. Pipeline RAG com representação vetorial em espaço denso contínuo (Embeddings 128-D) e Similaridade de Cosseno.
+    1. Pipeline RAG com representação vetorial em espaço denso contínuo (Embeddings densos) e Similaridade de Cosseno.
     2. Suporte direto a consultas de triagem e insights clínicos preventivos por perfil biológico.
     """
 
@@ -26,7 +30,7 @@ class KnowledgeService:
     @classmethod
     def inicializar_indice_rag(cls) -> None:
         """
-        Calcula o vocabulário IDF e gera embeddings densos de 128 dimensões para
+        Calcula o vocabulário IDF e gera embeddings densos para
         todos os chunks da Base de Conhecimento Pet Guardian.
         Executado uma única vez na inicialização em memória (< 15 MB de RAM no Render).
         """
@@ -55,7 +59,7 @@ class KnowledgeService:
         for termo, df in doc_freqs.items():
             cls._vocabulario_idf[termo] = math.log((num_docs + 1) / (df + 1)) + 1.0
 
-        # 3. Geração dos Embeddings Vetoriais Densos de 128 dimensões
+        # 3. Geração dos Embeddings Vetoriais Densos
         cls._embeddings_chunks = []
         for chunk in cls._chunks_indexados:
             texto_chunk = f"{chunk['title']} {chunk['content']} {' '.join(chunk.get('keywords', []))}"
@@ -64,20 +68,20 @@ class KnowledgeService:
 
         cls._indice_inicializado = True
 
-        # 4. Persistência e indexação no Banco de Dados Vetorial ChromaDB com embeddings de 128-D
+        # 4. Persistência e indexação no Banco de Dados Vetorial ChromaDB com os embeddings densos
         try:
             vector_store = get_vector_store()
             if vector_store.is_ready:
                 vector_store.seed_knowledge_base(cls._chunks_indexados, embeddings=cls._embeddings_chunks)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"ChromaDB indisponível, usando motor em memória: {e}")
 
     @classmethod
     def buscar_chunks_rag(
         cls,
         query: str,
         top_k: int = 3,
-        min_score: float = 0.18
+        min_score: float = RAG_MIN_SCORE
     ) -> Dict[str, Any]:
         """
         Executa busca semântica vetorial por Similaridade de Cosseno:
@@ -119,8 +123,8 @@ class KnowledgeService:
                         "top_score": maior_score,
                         "engine": "ChromaDB (HNSW Cosine)"
                     }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"ChromaDB indisponível, usando motor em memória: {e}")
 
         # 2. Motor Vetorial Denso Resiliente
         candidatos: List[Dict[str, Any]] = []
@@ -157,6 +161,12 @@ class KnowledgeService:
             "top_score": round(maior_score, 4),
             "engine": "ChromaDB-Resilient"
         }
+
+    @staticmethod
+    def calcular_faixa_etaria(idade: Optional[float]) -> str:
+        """Classifica a idade em anos (ausente = 3, adulto) em 'filhote', 'adulto' ou 'senior'."""
+        idade = 3 if idade is None else idade
+        return "senior" if idade >= 7 else ("filhote" if idade <= 1 else "adulto")
 
     @classmethod
     def verificar_alimento_toxico(cls, pergunta: str) -> Optional[Dict[str, Any]]:
@@ -202,14 +212,19 @@ class KnowledgeService:
             faixa_norm = "adulto"
             fase_desc = "Adulto (1 a 7 anos)"
 
-        # Busca dinâmica nos chunks preventivos
-        query_porte = f"porte {porte_norm}"
-        res_porte = cls.buscar_chunks_rag(query_porte, top_k=1, min_score=0.10)
-        chunk_porte = res_porte["chunks"][0] if res_porte["chunks"] else CHUNKS_PREVENTIVE_CARE[1]
-
-        query_faixa = f"fase {faixa_norm}"
-        res_faixa = cls.buscar_chunks_rag(query_faixa, top_k=1, min_score=0.10)
-        chunk_faixa = res_faixa["chunks"][0] if res_faixa["chunks"] else CHUNKS_PREVENTIVE_CARE[4]
+        # Mapeamento determinístico O(1) para chunks preventivos homologados (prev_01 a prev_06)
+        mapa_porte = {
+            "pequeno": CHUNKS_PREVENTIVE_CARE[0],
+            "medio": CHUNKS_PREVENTIVE_CARE[1],
+            "grande": CHUNKS_PREVENTIVE_CARE[2],
+        }
+        mapa_faixa = {
+            "filhote": CHUNKS_PREVENTIVE_CARE[3],
+            "adulto": CHUNKS_PREVENTIVE_CARE[4],
+            "senior": CHUNKS_PREVENTIVE_CARE[5],
+        }
+        chunk_porte = mapa_porte.get(porte_norm, CHUNKS_PREVENTIVE_CARE[1])
+        chunk_faixa = mapa_faixa.get(faixa_norm, CHUNKS_PREVENTIVE_CARE[4])
 
         return {
             "porte": porte_norm,
@@ -221,6 +236,3 @@ class KnowledgeService:
             "protocolo_veterinario": chunk_faixa["content"][:180] + "...",
             "estilo_de_vida": "Atividades físicas moderadas e enriquecimento ambiental diário."
         }
-
-# Inicialização imediata na carga do módulo
-KnowledgeService.inicializar_indice_rag()

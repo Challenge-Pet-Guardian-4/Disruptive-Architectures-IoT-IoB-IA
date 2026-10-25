@@ -16,8 +16,7 @@ class InsightsService:
     def gerar_insights(pet: PetContextPayload) -> InsightsResponse:
         nome_pet = pet.nome or "Seu pet"
         porte = pet.porte or "medio"
-        idade = pet.idade if pet.idade is not None else 3
-        faixa = "senior" if idade >= 7 else ("filhote" if idade <= 1 else "adulto")
+        faixa = KnowledgeService.calcular_faixa_etaria(pet.idade)
 
         dados = KnowledgeService.consultar_cuidados_porte_idade(porte, faixa)
 

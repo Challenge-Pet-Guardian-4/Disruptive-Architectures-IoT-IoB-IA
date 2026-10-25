@@ -12,7 +12,7 @@ services:
         value: 3.11.8
       - key: GROQ_API_KEY
         sync: false
-      - key: MODEL_NAME
-        value: openai/gpt-oss-120b
+      - key: AI_PROVIDER
+        value: groq
       - key: GEMINI_API_KEY
         sync: false

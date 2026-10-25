@@ -3,7 +3,7 @@ Router de Health Check e Status da Aplicação
 """
 from typing import Dict, Any
 from fastapi import APIRouter
-from src.core.config import MODEL_NAME, APP_TITLE, APP_VERSION
+from src.core.config import AI_PROVIDER, GROQ_MODEL, GEMINI_MODEL, APP_TITLE, APP_VERSION
 
 health_router = APIRouter(tags=["Health"])
 
@@ -15,7 +15,8 @@ def health_check() -> Dict[str, Any]:
     return {
         "status": "online",
         "service": APP_TITLE,
-        "model": f"{MODEL_NAME} / Semantic Knowledge Engine",
+        "provider": AI_PROVIDER,
+        "model": f"{GROQ_MODEL if AI_PROVIDER == 'groq' else GEMINI_MODEL} / Semantic Knowledge Engine",
         "framework": "FastAPI + Clean Mobile Pipeline",
         "version": APP_VERSION
     }

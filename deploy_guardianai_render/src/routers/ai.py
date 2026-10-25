@@ -22,7 +22,7 @@ from src.repositories.chat_repository import ChatRepository
 ai_router = APIRouter(prefix="/ai", tags=["AI"])
 
 @ai_router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest) -> ChatResponse:
+def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
     Processa interação no chat clínico com contexto do animal e histórico multi-turnos,
     persistindo automaticamente a conversa e a auditoria da triagem no SQLite.
@@ -30,7 +30,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     return ChatService.processar_chat(request)
 
 @ai_router.post("/insights", response_model=InsightsResponse)
-async def insights_endpoint(pet: PetContextPayload) -> InsightsResponse:
+def insights_endpoint(pet: PetContextPayload) -> InsightsResponse:
     """
     Gera insights preventivos personalizados de acordo com porte e idade do animal.
     """
@@ -88,6 +88,7 @@ def vector_store_status_endpoint() -> dict:
     Retorna o status do Banco de Dados Vetorial ChromaDB (persistência, coleção e total de chunks indexados).
     """
     from src.database.vector_store import get_vector_store, CHROMA_DIR, COLLECTION_NAME
+    from src.utils.embeddings import LocalSemanticEmbedder
     vs = get_vector_store()
     return {
         "status": "online" if vs.is_ready else "fallback_mode",
@@ -95,6 +96,6 @@ def vector_store_status_endpoint() -> dict:
         "storage_path": CHROMA_DIR,
         "collection_name": COLLECTION_NAME,
         "indexed_chunks": vs.count,
-        "vector_dimensions": 128,
+        "vector_dimensions": LocalSemanticEmbedder.DIMENSAO,
         "distance_metric": "cosine"
     }

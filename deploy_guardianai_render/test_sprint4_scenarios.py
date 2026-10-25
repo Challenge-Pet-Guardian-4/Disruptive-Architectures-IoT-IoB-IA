@@ -100,9 +100,9 @@ class GuardianRunner:
 
     def __init__(self, mode: str, base_url: str) -> None:
         self.mode, self.base_url = mode, base_url.rstrip("/")
-        self.provider, self.model, self.fallback = "groq", "openai/gpt-oss-120b", "gemini-2.5-flash"
+        self.provider, self.fallback = "groq", "gemini"
         if mode == "local":
-            from src.core.config import AI_PROVIDER, FALLBACK_MODEL_NAME, MODEL_NAME
+            from src.core.config import AI_PROVIDER, FALLBACK_PROVIDER
             from src.database.connection import init_db
             from src.database.vector_store import CHROMA_DIR, COLLECTION_NAME, get_vector_store
             from src.schemas.chat import ChatRequest
@@ -113,7 +113,7 @@ class GuardianRunner:
 
             init_db()
             KnowledgeService.inicializar_indice_rag()
-            self.provider, self.model, self.fallback = AI_PROVIDER, MODEL_NAME, FALLBACK_MODEL_NAME
+            self.provider, self.fallback = AI_PROVIDER, FALLBACK_PROVIDER
             self._ctx = (get_vector_store, CHROMA_DIR, COLLECTION_NAME, KnowledgeService, ChatService, InsightsService, ChatRequest, PetContextPayload)
 
     def _http(self, path: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -129,6 +129,7 @@ class GuardianRunner:
     def vector_status(self) -> Dict[str, Any]:
         if self.mode == "api":
             return self._http("/ai/vector-store/status")
+        from src.utils.embeddings import LocalSemanticEmbedder
         get_vs, chroma_dir, col_name, ks, *_ = self._ctx
         vs = get_vs()
         return {
@@ -137,7 +138,7 @@ class GuardianRunner:
             "storage_path": chroma_dir,
             "collection_name": col_name,
             "indexed_chunks": vs.count or len(ks._chunks_indexados),
-            "vector_dimensions": 128,
+            "vector_dimensions": LocalSemanticEmbedder.DIMENSAO,
             "distance_metric": "cosine",
         }
 
@@ -197,8 +198,8 @@ def executar_bateria(mode: str = "local", base_url: str = "http://localhost:8000
     try:
         vs = runner.vector_status()
         for k, v in [
-            ("Provedor LLM Primário", f"{runner.provider.upper()} ({runner.model})"),
-            ("Fallback de Contingência", f"GOOGLE GEMINI ({runner.fallback})"),
+            ("Provedor LLM Primário", runner.provider.upper()),
+            ("Fallback de Contingência", runner.fallback.upper()),
             ("Banco Vetorial", f"{vs.get('database')} [Status: {GRN}{str(vs.get('status', '')).upper()}{RST}]"),
             ("Diretório de Persistência", vs.get("storage_path")),
             ("Dimensão dos Embeddings", f"{CYN}{vs.get('vector_dimensions')} dimensões densas (LocalSemanticEmbedder){RST}"),
@@ -265,7 +266,7 @@ def executar_bateria(mode: str = "local", base_url: str = "http://localhost:8000
 
     if falhas == 0:
         print(f"{GRN}{BLD}🏆 RESULTADO: 100% DOS CRITÉRIOS DE QA HOMOLOGADOS COM SUCESSO!\n"
-              f"   ✔ ChromaDB HNSW 128-D + LocalSemanticEmbedder | RAG Híbrido + Guardrails Ativos\n"
+              f"   ✔ ChromaDB HNSW + LocalSemanticEmbedder | RAG Híbrido + Guardrails Ativos\n"
               f"   ✔ Solução Pronta para Entrega Sprint 4 (FIAP - Challenge CLYVO VET 2026){RST}")
     else:
         print(f"{RED}{BLD}⚠️  RESULTADO: {falhas} INCONSISTÊNCIA(S) ENCONTRADA(S) NA AUDITORIA!{RST}")

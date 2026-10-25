@@ -76,7 +76,7 @@ Tutores de animais de estimação enfrentam frequentes incertezas no dia a dia s
 
 ### Escopo da Entrega: Microserviço Python FastAPI com ChromaDB
 - **Microsserviço Python FastAPI Modular ([`deploy_guardianai_render`](./deploy_guardianai_render)):** Aplicação de produção estruturada em camadas (`src/core`, `schemas`, `knowledge`, `database`, `utils`, `services`, `routers`) e configurada para deploy contínuo no Render (`render.yaml`).
-- **Banco de Dados Vetorial ChromaDB (`./data/chroma`):** Persistência física de embeddings densos em disco com coleção `petguardian_knowledge` e indexação HNSW por Similaridade de Cosseno.
+- **Banco de Dados Vetorial ChromaDB (`./data/chroma`):** Persistência física de embeddings densos em disco com coleção `petguardian_knowledge_512d` e indexação HNSW por Similaridade de Cosseno.
 - **APIs RESTful Tipadas:** Expõe endpoints (`/ai/chat`, `/ai/insights`, `/ai/vector-store/status`, `/history`, `/audit`, `/sessions`) com tipagem estrita, janela deslizante anti-contaminação e sanitização automática para o app Mobile React Native.
 
 ---
@@ -98,15 +98,15 @@ Para triagem veterinária e orientação clínica preventiva de cães e gatos, a
  │               FASTAPI APPLICATION (RENDER CLOUD - 512 MB RAM)          │
  │                                                                        │
  │  1. Guardrail Farmacológico Crítico (Veto Paracetamol Gatos)           │
- │  2. LocalSemanticEmbedder (Vetorização Densa 128-D em Memória)         │
+ │  2. LocalSemanticEmbedder (Vetorização Densa 512-D em Memória)         │
  │  3. Motor de Similaridade de Cosseno (Ranking Top-K, min_score=0.18)   │
  │  4. Grounded Prompt Assembly (System Prompt + Pet Context + RAG Chunks)│
  └─────────────────┬───────────────────────────────────┬──────────────────┘
                    │                                   │
-                   ▼ (Inferência Primária)             ▼ (Fallback de Rede)
+                   ▼ (AI_PROVIDER, padrão)           ▼ (Fallback automático)
     ┌─────────────────────────────┐     ┌─────────────────────────────┐
     │  GROQ CLOUD (LPU)           │     │  GOOGLE GEMINI (FALLBACK)   │
-    │  Model: openai/gpt-oss-120b │     │ Model: gemini-3.5-flash-lite│
+    │  Model: openai/gpt-oss-20b  │     │ Model: gemini-3.5-flash     │
     │  Latência: ~350ms           │     │                             │
     └──────────────┬──────────────┘     └──────────────┬──────────────┘
                    │                                   │
@@ -138,14 +138,14 @@ Para triagem veterinária e orientação clínica preventiva de cães e gatos, a
 No plano gratuito do Render, o container possui um limite estrito de **512 MB de RAM**. Bibliotecas convencionais de Deep Learning como PyTorch (`torch`), TensorFlow e `sentence-transformers` alocam entre 800 MB e 1.2 GB de memória residente durante a inicialização de modelos neurais, o que provoca encerramento imediato pelo Linux OOM-Killer (`SIGKILL`).
 
 Para solucionar esse desafio e garantir **embeddings vetoriais genuínos e busca vetorial precisa**:
-1. Implementamos o **`LocalSemanticEmbedder`** (`src/utils/embeddings.py`), que projeta qualquer texto ou consulta em um **espaço vetorial contínuo denso de 128 dimensões ($\mathbb{R}^{128}$)** com ponderação sublinear TF-IDF, N-grams e expansão semântica clínica.
+1. Implementamos o **`LocalSemanticEmbedder`** (`src/utils/embeddings.py`), que projeta qualquer texto ou consulta em um **espaço vetorial contínuo denso de 512 dimensões ($\mathbb{R}^{512}$)** com ponderação sublinear TF-IDF, N-grams e expansão semântica clínica.
 2. Cada vetor gerado é normalizado pela norma Euclidiana unitária ($L_2\text{-norm} = 1.0$), de modo que a **Similaridade de Cosseno** corresponde exatamente ao produto escalar dos vetores:
-   $$\text{cosine\_similarity}(\vec{u}, \vec{v}) = \frac{\vec{u} \cdot \vec{v}}{\|\vec{u}\| \|\vec{v}\|} = \sum_{i=1}^{128} u_i \cdot v_i$$
-3. O motor consome **menos de 15 MB de RAM**, processa buscas em **sub-milissegundos (< 0.2ms)** e opera de forma 100% autônoma e determinística.
+   $$\text{cosine\_similarity}(\vec{u}, \vec{v}) = \frac{\vec{u} \cdot \vec{v}}{\|\vec{u}\| \|\vec{v}\|} = \sum_{i=1}^{512} u_i \cdot v_i$$
+3. O motor consome **menos de 45 MB de RAM**, processa buscas em **sub-milissegundos (< 0.2ms)** e opera de forma 100% autônoma e determinística.
 
 ---
 
-## 📚 4. Base de Conhecimento Curada Pet Guardian (33 Chunks)
+## 📚 4. Base de Conhecimento Curada Pet Guardian (64 Chunks)
 
 A base de conhecimento foi amplamente expandida para cobrir as principais lacunas do dia a dia clínico, estruturada em chunks com metadados obrigatórios (`id`, `source`, `category`, `title`, `content`, `keywords`):
 
@@ -188,6 +188,47 @@ A base de conhecimento foi amplamente expandida para cobrir as principais lacuna
 - `faq_10`: Picadas de Insetos, Aranhas, Abelhas e Cobras (Reações Anafiláticas e Edema Facial).
 - `faq_11`: Manejo Comportamental: Ansiedade de Separação e Medo de Trovões/Fogos de Artifício.
 
+### 4.4. Comportamento e Adestramento (`CHUNKS_BEHAVIOR` - 7 Chunks)
+- `beh_01`: Adestramento Positivo: Reforço Positivo, Clicker e Como Ensinar Comandos Básicos.
+- `beh_02`: Ansiedade de Separação e Destruição: Causas, Sinais e Manejo Ambiental.
+- `beh_03`: Comportamento Felino: Arranhadores, Marcação e Como Redirecionar o Gato.
+- `beh_04`: Caixa de Areia: Tamanho, Tipo de Areia, Limpeza e Recusa.
+- `beh_05`: Agressividade Canina: Linguagem Corporal, Rosnar e Protocolo de Segurança.
+- `beh_06`: Exercício Físico e Estimulação Mental por Porte e Raça.
+- `beh_07`: Introdução de Novo Pet na Casa: Protocolo de Apresentação Segura.
+
+### 4.5. Higiene, Pele e Controle de Parasitas (`CHUNKS_HYGIENE_SKIN` - 7 Chunks)
+- `hyg_01`: Banho: Frequência Correta, Produtos Adequados e Secagem.
+- `hyg_02`: Pulgas e Carrapatos: Prevenção, Doenças Transmitidas e Perigo da Permetrina em Gatos.
+- `hyg_03`: Coceira, Alergias de Pele e Dermatite Alérgica: Causas e Conduta.
+- `hyg_04`: Higiene dos Ouvidos e Otites: Sinais de Alerta e Limpeza Segura.
+- `hyg_05`: Corte de Unhas e Cuidados com as Patas e Almofadinhas.
+- `hyg_06`: Escovação, Troca de Pelos e Tosa: O Que Pode e o Que Evitar.
+- `hyg_07`: Vermifugação: Frequência e Sinais de Verminose.
+
+### 4.6. Reprodução e Neonatologia (`CHUNKS_REPRODUCTION` - 5 Chunks)
+- `rep_01`: Castração: Benefícios, Melhor Idade e Cuidados Pós-Operatórios.
+- `rep_02`: Cio: Sinais, Duração, Gestação Psicológica e Como Manejar.
+- `rep_03`: Piometra: Emergência Uterina Silenciosa — Sinais e Urgência Cirúrgica.
+- `rep_04`: Gestação e Parto Canino/Felino: Duração, Sinais de Alerta e Quando Ir ao Veterinário.
+- `rep_05`: Neonatos: Cuidados com Filhotes Órfãos (Temperatura, Colostro e Substitutos de Leite).
+
+### 4.7. Estilo de Vida, Viagem e Posse Responsável (`CHUNKS_LIFESTYLE` - 7 Chunks)
+- `life_01`: Viagem de Carro com Cães e Gatos: Segurança e Perigo do Veículo Fechado.
+- `life_02`: Viagem de Avião, Ônibus e Hospedagem Pet Friendly: Documentos e Regras.
+- `life_03`: Maus-Tratos e Abandono de Animais: Crime Previsto em Lei (Lei 9.605/98 e Lei 14.064/2020).
+- `life_04`: Posse Responsável: Identificação, Vacinação, Planejamento e Custos.
+- `life_05`: Adoção e Escolha do Primeiro Pet: Porte, Rotina e Check-up Inicial.
+- `life_06`: Pets e Crianças: Convivência Segura e Prevenção de Mordidas.
+- `life_07`: Kit de Primeiros Socorros Pet e Plano de Emergência.
+
+### 4.8. Doenças Infecciosas e Vacinais (`CHUNKS_INFECTIOUS_DISEASES` - 5 Chunks)
+- `inf_01`: Parvovirose e Cinomose Canina: Sinais de Alerta, Contágio e Emergência Crítica.
+- `inf_02`: FIV e FeLV em Gatos: Vírus da Imunodeficiência e Leucemia Felina.
+- `inf_03`: Tosse dos Canis (Traqueobronquite Infecciosa): Sintomas e Prevenção.
+- `inf_04`: Leishmaniose Visceral Canina: Transmissão, Zoonose e Medidas Preventivas.
+- `inf_05`: Giardíase e Parasitoses Intestinais: Contágio Hídrico e Higiene Ambiental.
+
 ---
 
 ## 🧪 5. Validação em Cenários Reais de Uso (Sprint 4)
@@ -205,17 +246,17 @@ A base de conhecimento foi amplamente expandida para cobrir as principais lacuna
 
 ### Variáveis de Ambiente (`.env`)
 ```env
-# Provedor Principal Groq (LPU)
-GROQ_API_KEY=gsk_sua_chave_groq_aqui
+# Provedor primário: groq (padrão) ou gemini. O outro atua como fallback automático.
 AI_PROVIDER=groq
-MODEL_NAME=openai/gpt-oss-120b
 
-# Provedor Fallback Google Gemini
+# Chaves de API (as duas habilitam o fallback)
+GROQ_API_KEY=gsk_sua_chave_groq_aqui
 GEMINI_API_KEY=sua_chave_gemini_aqui
-FALLBACK_MODEL_NAME=gemini-3.5-flash-lite
 
 PORT=8000
 ```
+
+Os modelos são fixos no código ([`config.py`](./deploy_guardianai_render/src/core/config.py)): `openai/gpt-oss-20b` (Groq) e `gemini-3.5-flash` (Gemini). Só o provedor é escolhido via `AI_PROVIDER`.
 
 ### Execução Local (FastAPI)
 ```bash

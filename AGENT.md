@@ -14,12 +14,12 @@
 Na Sprint 3, a aplicação contava com suporte ao Groq e Gemini, mas utilizava consultas baseadas em correspondências determinísticas fixas. Para a Sprint 4, implementamos um **Pipeline Completo de RAG (Retrieval-Augmented Generation)** vetorial.
 Como o container gratuito do Render possui **512 MB de RAM**:
 - Frameworks pesados como PyTorch (`torch`) ou `sentence-transformers` exigiriam mais de 900 MB de memória, causando crash imediato por OOM (*Out Of Memory*).
-- Como solução de engenharia de software sênior, implementamos o **`LocalSemanticEmbedder`** (`src/utils/embeddings.py`), que gera **embeddings vetoriais densos de 128 dimensões ($\mathbb{R}^{128}$)** com L2-normalização e Similaridade de Cosseno direta.
+- Como solução de engenharia de software sênior, implementamos o **`LocalSemanticEmbedder`** (`src/utils/embeddings.py`), que gera **embeddings vetoriais densos de 512 dimensões ($\mathbb{R}^{512}$)** com L2-normalização e Similaridade de Cosseno direta.
 - Consumo de memória do motor vetorial: **inferior a 15 MB de RAM**, permitindo que todo o microsserviço FastAPI rode com folga (~45 MB de RAM total).
 
 ### 2.2. Provedor Principal Groq LPU + Fallback Gemini
-- **Groq Cloud (openai/gpt-oss-120b):** Modelo MoE open-weight de 120 bilhões de parâmetros rodando em chips LPU (*Language Processing Units*), fornecendo inferência com tempo de resposta médio de ~350 ms.
-- **Google Gemini (gemini-3.5-flash-lite):** Fallback automático de contingência via SDK oficial e REST caso ocorra qualquer indisponibilidade de cota.
+- **Groq Cloud (openai/gpt-oss-20b):** Modelo MoE open-weight de 20 bilhões de parâmetros rodando em chips LPU (*Language Processing Units*), fornecendo inferência com tempo de resposta médio de ~350 ms.
+- **Google Gemini (gemini-3.5-flash):** Segundo provedor via SDK oficial. O provedor primário é escolhido por `AI_PROVIDER` (`groq` por padrão ou `gemini`) e o outro é usado como fallback automático em caso de falha ou cota esgotada.
 
 ---
 
@@ -79,10 +79,15 @@ Como o container gratuito do Render possui **512 MB de RAM**:
 
 ## 📚 4. Base de Conhecimento Estruturada em Chunks (Pet Guardian)
 
-A base foi totalmente modernizada e expandida para **33 chunks atômicos** com metadados obrigatórios (`id`, `source`, `category`, `title`, `content`, `keywords`), eliminando todos os dicionários legados:
+A base foi totalmente modernizada e expandida para **64 chunks atômicos em 8 categorias clínicas** com metadados obrigatórios (`id`, `source`, `category`, `title`, `content`, `keywords`), eliminando todos os dicionários legados:
 - **14 Chunks de Toxicologia:** Chocolate, cacau puro, uvas/passas, cebola/alho, xilitol, macadâmia, cafeína, plantas tóxicas (lírio em gatos, comigo-ninguém-pode, espada-de-são-jorge), raticidas/chumbinho, cloro/água sanitária, medicamentos humanos (paracetamol, ibuprofeno), abacate e bebidas alcoólicas.
 - **8 Chunks de Cuidados Preventivos:** Manejo de porte pequeno (coração e tártaro), médio (peso e otite), grande (articulações e torção gástrica), filhotes (vacinas pediátricas), adultos (imunidade e carrapatos), sênior (SDMA renal e osteoartrite), saúde urinária felina (prevenção de FLUTD) e controle de bolas de pelos.
 - **11 Chunks de FAQ e Primeiros Socorros:** Frutas seguras, legumes permitidos, carnes e perigo de ossos cozidos, intolerância a laticínios, transição gradual de ração, manejo de vômito/diarreia, proibição de vômito caseiro com sal ou água oxigenada, manobra de Heimlich para engasgo, golpe de calor em braquicefálicos, picadas de insetos/cobras e ansiedade de separação.
+- **7 Chunks de Comportamento:** Adestramento positivo, latido/destruição, arranhadores felinos, caixa de areia, agressividade, exercício físico e introdução de novo pet.
+- **7 Chunks de Higiene e Pele:** Banho correto, pulgas/carrapatos (risco permetrina em gatos), coceira/dermatite, higiene de ouvidos, corte de unhas, tosa/escovação e vermifugação.
+- **5 Chunks de Reprodução:** Castração e pós-operatório, cio, piometra (urgência cirúrgica), gestação/parto e neonatos órfãos.
+- **7 Chunks de Estilo de Vida:** Viagem de carro, viagem aérea/transporte, lei de maus-tratos, posse responsável, adoção, pets e crianças, kit de primeiros socorros.
+- **5 Chunks de Doenças Infecciosas:** Parvovirose e cinomose, FIV e FeLV felina, tosse dos canis, leishmaniose visceral e giardíase/coccidiose.
 
 ---
 

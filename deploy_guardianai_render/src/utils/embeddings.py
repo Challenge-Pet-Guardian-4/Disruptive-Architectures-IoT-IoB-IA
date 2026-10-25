@@ -3,7 +3,7 @@ Módulo de Embeddings Vetoriais Locais e Similaridade de Cosseno — Pet Guardia
 
 Arquitetura Vetorial:
 1. Modelo Principal: all-MiniLM-L6-v2 (ONNX / ChromaDB) — Vetores densos de 384 dimensões em ./data/chroma.
-2. Motor Resiliente Integrado: LocalSemanticEmbedder — Vetores densos de 128 dimensões com L2-norm e produto escalar.
+2. Motor Resiliente Integrado: LocalSemanticEmbedder — Vetores densos de 512 dimensões com L2-norm e produto escalar.
 3. Compatibilidade com Modelos Google / Hugging Face: Suporte transparente via ChromaDB Embedding Functions.
 """
 import math
@@ -19,7 +19,7 @@ class LocalSemanticEmbedder:
     frameworks pesados (PyTorch/TensorFlow) que estourariam o limite de 512 MB de RAM do Render.
     """
 
-    DIMENSAO: int = 128
+    DIMENSAO: int = 512
 
     @classmethod
     def _hash_termo_para_dimensao(cls, termo: str) -> tuple[int, float]:
@@ -35,7 +35,7 @@ class LocalSemanticEmbedder:
     @classmethod
     def gerar_embedding(cls, texto: str, idf_weights: Dict[str, float] = None) -> List[float]:
         """
-        Gera o vetor denso L2-normalizado de 128 dimensões para o texto fornecido.
+        Gera o vetor denso L2-normalizado de DIMENSAO dimensões para o texto fornecido.
         Aplica tokenização, n-grams, expansão semântica e ponderação de frequência.
         """
         if not texto or not texto.strip():
@@ -55,8 +55,11 @@ class LocalSemanticEmbedder:
             contagem[t] = contagem.get(t, 0) + 1
 
         for termo, freq in contagem.items():
+            # Termo fora do vocabulário da base não pode casar com nenhum documento: só adicionaria ruído ao vetor
+            if idf_weights and termo not in idf_weights:
+                continue
             peso_tf = 1.0 + math.log(freq)
-            peso_idf = idf_weights.get(termo, 1.5) if idf_weights else 1.0
+            peso_idf = idf_weights[termo] if idf_weights else 1.0
             peso_final = peso_tf * peso_idf
 
             idx, sinal = cls._hash_termo_para_dimensao(termo)

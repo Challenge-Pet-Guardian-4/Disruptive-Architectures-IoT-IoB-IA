@@ -3,7 +3,7 @@ Serviço Orquestrador do Chat Clínico PetGuardian com RAG Vetorial e Persistên
 """
 import uuid
 from typing import Optional, List, Dict, Any
-from src.core.config import MODEL_NAME
+from src.core.config import AI_PROVIDER, FALLBACK_PROVIDER, GROQ_MODEL, GEMINI_MODEL
 from src.core.prompts import formatar_prompt_rag
 from src.schemas.chat import ChatRequest, ChatResponse, RetrievedSource
 from src.services.knowledge_service import KnowledgeService
@@ -19,7 +19,7 @@ class ChatService:
     1. Guardrail farmacológico emergencial vital (Paracetamol em felinos)
     2. Recuperação vetorial de trechos (RAG) por Similaridade de Cosseno em espaço contínuo de Embeddings
     3. Construção de Prompt Fundamentado (System Prompt + Contexto do Pet + RAG Chunks + Anti-Alucinação)
-    4. Inferência generativa primária via Groq Cloud (LPU openai/gpt-oss-120b com fallback Gemini)
+    4. Inferência generativa primária via Groq Cloud (provedor definido por AI_PROVIDER, com fallback automático para o outro)
     5. Fallback fundamentado direto da Base de Conhecimento Pet Guardian
     6. Blindagem de domínio contra evasão de escopo (tentativas de código / programação)
     7. Persistência de mensagens, auditoria de triagem e fontes utilizadas no SQLite (Fail-safe)
@@ -35,24 +35,10 @@ class ChatService:
         nome_pet: Optional[str]
     ) -> ChatResponse:
         """
-        Atribui o sessionId ao response e grava o histórico e o parecer de auditoria no SQLite.
+        Atribui o sessionId ao response e grava o turno e o parecer de auditoria no SQLite (falha de gravação é logada e não derruba a resposta).
         """
         response.sessionId = session_id
-
-        # Persistência assíncrona/segura no SQLite
-        ChatRepository.salvar_mensagem(
-            session_id=session_id,
-            sender="user",
-            text=request.pergunta,
-            pet_id=pet_id
-        )
-        ChatRepository.salvar_mensagem(
-            session_id=session_id,
-            sender="model",
-            text=response.resposta,
-            pet_id=pet_id
-        )
-        ChatRepository.salvar_auditoria(
+        ChatRepository.salvar_interacao(
             session_id=session_id,
             pergunta=request.pergunta,
             resposta=response.resposta,
@@ -65,60 +51,58 @@ class ChatService:
 
         return response
 
+    @staticmethod
+    def _resposta_guardrail(texto: str, acoes: List[str], origem: str) -> ChatResponse:
+        """Monta a resposta de emergência dos vetos farmacológicos, sempre ancorada no protocolo tox_12."""
+        return ChatResponse(
+            resposta=limpar_texto_mobile(texto),
+            categoria="EMERGENCIA",
+            urgencia="EMERGENCIA",
+            acoes_recomendadas=acoes,
+            origem_resposta=origem,
+            sources_used=[
+                RetrievedSource(
+                    id="tox_12",
+                    source="Protocolo de Toxicologia Pet Guardian",
+                    category="toxicology",
+                    title="Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
+                    similarity_score=1.0
+                )
+            ],
+            rag_grounded=True
+        )
+
     @classmethod
     def processar_chat(cls, request: ChatRequest) -> ChatResponse:
         session_id = request.sessionId or f"sess_{uuid.uuid4().hex[:12]}"
-        
-        # Normalização defensiva: aceita petContext como objeto Pydantic ou dicionário
-        if isinstance(request.petContext, dict):
-            try:
-                from src.schemas.pet import PetContextPayload
-                request.petContext = PetContextPayload(**request.petContext)
-            except Exception:
-                pass
-
-        pet_id = getattr(request.petContext, "id", None) if request.petContext else None
-        nome_pet = getattr(request.petContext, "nome", None) or "seu pet"
+        p = request.petContext
+        pet_id = p.id if p else None
+        nome_pet = (p.nome if p else None) or "seu pet"
         pergunta_norm = normalizar_texto(request.pergunta)
 
         # 1. Guardrail de Segurança Farmacológica Crítica e Ética Médica (Paracetamol em Gatos e Opioides/Prescrições)
         if "paracetamol" in pergunta_norm and any(k in pergunta_norm for k in ["gato", "felino", "mingau", "gatinho"]):
-            texto_limpo = limpar_texto_mobile(
+            resp = cls._resposta_guardrail(
                 "⛔ ALERTA VITAL: NUNCA DÊ PARACETAMOL PARA UM GATO!\n\n"
                 "Segundo o Protocolo de Farmacovigilância Pet Guardian, o Paracetamol é ALTAMENTE LETAL PARA FELINOS mesmo em doses mínimas infantis. "
                 "Os gatos possuem deficiência congênita na enzima glucuronil-transferase, causando meta-hemoglobinemia (asfixia interna) "
                 "e necrose hepática fulminante em poucas horas.\n\n"
                 "🚨 O que fazer agora:\n"
                 "• Não administre nenhum medicamento caseiro ou humano.\n"
-                "• Se o animal ingeriu acidentalmente, leve IMEDIATAMENTE ao pronto-socorro veterinário 24h Pet Guardian."
-            )
-            resp = ChatResponse(
-                resposta=texto_limpo,
-                categoria="EMERGENCIA",
-                urgencia="EMERGENCIA",
-                acoes_recomendadas=["Não medicar em casa", "Procurar clínica veterinária urgente"],
-                origem_resposta="Guardrail de Segurança Farmacológica PetGuardian",
-                sources_used=[
-                    RetrievedSource(
-                        id="tox_12",
-                        source="Protocolo de Toxicologia Pet Guardian",
-                        category="toxicology",
-                        title="Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
-                        similarity_score=1.0
-                    )
-                ],
-                rag_grounded=True
+                "• Se o animal ingeriu acidentalmente, leve IMEDIATAMENTE ao pronto-socorro veterinário 24h Pet Guardian.",
+                ["Não medicar em casa", "Procurar clínica veterinária urgente"],
+                "Guardrail de Segurança Farmacológica PetGuardian"
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 
         # Bloqueio determinístico de solicitação de dosagem/receita caseira de morfina, opioides e medicamentos controlados (Cenário 4)
         is_opioide_receita = (
             any(k in pergunta_norm for k in ["morfina", "tramadol", "opioide"]) or
-            (("receita" in pergunta_norm or "prescreva" in pergunta_norm or "dosagem" in pergunta_norm) and
+            (any(k in pergunta_norm for k in ["receita", "prescreva", "dosagem"]) and
              any(k in pergunta_norm for k in ["injetavel", "controlado", "antibiotico", "corticoide"]))
         )
         if is_opioide_receita:
-            texto_bloqueio = limpar_texto_mobile(
+            resp = cls._resposta_guardrail(
                 "⛔ VETO CLÍNICO E ÉTICO: PRESCRIÇÃO E DOSAGEM DE SUBSTÂNCIAS CONTROLADAS VEDADAS!\n\n"
                 "Segundo o Protocolo de Toxicologia e Farmacovigilância Pet Guardian (Protocolo tox_12), "
                 "é estritamente vedado calcular dosagens domiciliares ou prescrever receitas de analgésicos opioides (como morfina e tramadol), "
@@ -126,29 +110,14 @@ class ChatService:
                 "🚨 Riscos Iminentes de Óbito:\n"
                 "• A administração inadequada de morfina em domicílio acarreta depressão respiratória fulminante, hipotensão severa, coma e parada cardiorrespiratória.\n"
                 "• Prescrição de opioides e controle álgico pós-operatório exigem termo de responsabilidade e retenção de receita especial veterinária.\n\n"
-                "Encaminhe o animal IMEDIATAMENTE a um hospital veterinário presencial da Pet Guardian para manejo adequado e seguro da dor."
-            )
-            resp = ChatResponse(
-                resposta=texto_bloqueio,
-                categoria="EMERGENCIA",
-                urgencia="EMERGENCIA",
-                acoes_recomendadas=["Não medicar em casa", "Procurar hospital veterinário presencial urgente"],
-                origem_resposta="Guardrail Ético-Farmacológico PetGuardian",
-                sources_used=[
-                    RetrievedSource(
-                        id="tox_12",
-                        source="Protocolo de Toxicologia Pet Guardian",
-                        category="toxicology",
-                        title="Veto a Medicamentos Humanos, Opioides e Prescrição sem Exame Presencial (Morfina, Tramadol, Paracetamol)",
-                        similarity_score=1.0
-                    )
-                ],
-                rag_grounded=True
+                "Encaminhe o animal IMEDIATAMENTE a um hospital veterinário presencial da Pet Guardian para manejo adequado e seguro da dor.",
+                ["Não medicar em casa", "Procurar hospital veterinário presencial urgente"],
+                "Guardrail Ético-Farmacológico PetGuardian"
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 
         # 2. Recuperação de Chunks da Base de Conhecimento via RAG (Embeddings Vetoriais + Similaridade de Cosseno)
-        resultado_rag = KnowledgeService.buscar_chunks_rag(request.pergunta, top_k=3, min_score=0.18)
+        resultado_rag = KnowledgeService.buscar_chunks_rag(request.pergunta, top_k=3)
         chunks_recuperados = resultado_rag["chunks"]
         match_found = resultado_rag["match_found"]
 
@@ -165,32 +134,21 @@ class ChatService:
 
         # 3. Construção do Contexto Estruturado do Pet
         contexto_pet_str = ""
-        p = request.petContext
-        if p:
-            p_nome = getattr(p, "nome", None) if not isinstance(p, dict) else p.get("nome")
-            p_raca = getattr(p, "raca", None) if not isinstance(p, dict) else p.get("raca")
-            p_porte = getattr(p, "porte", None) if not isinstance(p, dict) else p.get("porte")
-            p_idade = getattr(p, "idade", None) if not isinstance(p, dict) else p.get("idade")
-            p_peso = getattr(p, "peso", None) if not isinstance(p, dict) else p.get("peso")
-            p_alergias = getattr(p, "alergias", None) if not isinstance(p, dict) else p.get("alergias")
-            p_meds = getattr(p, "medicamentos", None) if not isinstance(p, dict) else p.get("medicamentos")
-            p_vacina = getattr(p, "ultimaVacina", None) if not isinstance(p, dict) else p.get("ultimaVacina")
-
-            if p_nome:
-                partes_contexto = [
-                    f"Nome: {p_nome}",
-                    f"Raça: {p_raca or 'SRD'}",
-                    f"Porte: {p_porte or 'médio'}",
-                    f"Idade: {p_idade if p_idade is not None else 'não informada'} anos",
-                    f"Peso: {p_peso or 'não informado'} kg"
-                ]
-                if p_alergias:
-                    partes_contexto.append(f"Alergias Conhecidas: {p_alergias}")
-                if p_meds:
-                    partes_contexto.append(f"Medicamentos Contínuos: {p_meds}")
-                if p_vacina:
-                    partes_contexto.append(f"Última Vacina: {p_vacina}")
-                contexto_pet_str = "[Dados do Pet Ativo: " + ", ".join(partes_contexto) + "]"
+        if p and p.nome:
+            partes_contexto = [
+                f"Nome: {p.nome}",
+                f"Raça: {p.raca or 'SRD'}",
+                f"Porte: {p.porte or 'médio'}",
+                f"Idade: {p.idade if p.idade is not None else 'não informada'} anos",
+                f"Peso: {p.peso or 'não informado'} kg"
+            ]
+            if p.alergias:
+                partes_contexto.append(f"Alergias Conhecidas: {p.alergias}")
+            if p.medicamentos:
+                partes_contexto.append(f"Medicamentos Contínuos: {p.medicamentos}")
+            if p.ultimaVacina:
+                partes_contexto.append(f"Última Vacina: {p.ultimaVacina}")
+            contexto_pet_str = "[Dados do Pet Ativo: " + ", ".join(partes_contexto) + "]"
 
         # 4. Montagem do Prompt Fundamentado (RAG Prompt Template)
         prompt_fundamentado = formatar_prompt_rag(
@@ -201,16 +159,16 @@ class ChatService:
         )
 
         eh_pedido_programacao = detectar_pedido_programacao(request.pergunta)
-        origem_ia = f"Guardian AI (Groq: {MODEL_NAME} + RAG)"
+        origem_ia = ""
+        resposta_ia = None
 
-        # 5. Inferência Generativa Primária (Groq Cloud LPU)
-        resposta_ia = GroqService.gerar_resposta(prompt_fundamentado, request.historico)
-
-        # 5.1. Fallback de Contingência: Google Gemini (caso Groq oscile ou atinja cota)
-        if not resposta_ia:
-            resposta_ia = GeminiService.gerar_resposta(prompt_fundamentado, request.historico)
+        # 5. Inferência Generativa: provedor primário (AI_PROVIDER) e, se falhar, o outro como contingência
+        for provedor in (AI_PROVIDER, FALLBACK_PROVIDER):
+            servico, modelo = (GroqService, GROQ_MODEL) if provedor == "groq" else (GeminiService, GEMINI_MODEL)
+            resposta_ia = servico.gerar_resposta(prompt_fundamentado, request.historico)
             if resposta_ia:
-                origem_ia = "Guardian AI (Fallback Gemini + RAG)"
+                origem_ia = f"Guardian AI ({provedor.capitalize()}: {modelo} + RAG)"
+                break
 
         # 6. Processamento da Resposta Generativa
         if resposta_ia:
@@ -254,7 +212,7 @@ class ChatService:
             if eh_pedido_programacao:
                 texto_fallback_rag = sanitizar_resposta_anti_codigo(texto_fallback_rag, True)
 
-            eh_emergencia = top_chunk["category"] == "toxicology"
+            eh_emergencia = (top_chunk["category"] == "toxicology" or top_chunk["id"] in {"rep_03", "faq_08", "faq_09", "inf_01"} or top_chunk.get("urgency") in ["EMERGENCIA", "emergencia"])
             resp = ChatResponse(
                 resposta=limpar_texto_mobile(texto_fallback_rag),
                 categoria="EMERGENCIA" if eh_emergencia else "saude",
@@ -285,9 +243,8 @@ class ChatService:
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 
         # 9. Fallback Preventivo Contextual por Porte e Idade (quando não há match na base nem LLM online)
-        porte_req = request.petContext.porte if request.petContext and request.petContext.porte else "medio"
-        idade_num = request.petContext.idade if request.petContext and request.petContext.idade is not None else 3
-        faixa_calc = "senior" if idade_num >= 7 else ("filhote" if idade_num <= 1 else "adulto")
+        porte_req = (p.porte if p else None) or "medio"
+        faixa_calc = KnowledgeService.calcular_faixa_etaria(p.idade if p else None)
         dados_cuidado = KnowledgeService.consultar_cuidados_porte_idade(porte_req, faixa_calc)
 
         resposta_contextual = (

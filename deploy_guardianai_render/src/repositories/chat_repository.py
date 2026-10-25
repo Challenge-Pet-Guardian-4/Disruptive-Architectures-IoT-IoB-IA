@@ -14,30 +14,7 @@ class ChatRepository:
     """
 
     @staticmethod
-    def salvar_mensagem(
-        session_id: str,
-        sender: str,
-        text: str,
-        pet_id: Optional[int] = None
-    ) -> bool:
-        """
-        Registra uma mensagem individual no histórico do SQLite.
-        """
-        try:
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO mensagens_chat (session_id, pet_id, sender, text)
-                    VALUES (?, ?, ?, ?)
-                """, (session_id, pet_id, sender, text))
-                conn.commit()
-                return True
-        except Exception as e:
-            logger.error(f"Erro ao salvar mensagem no SQLite: {e}")
-            return False
-
-    @staticmethod
-    def salvar_auditoria(
+    def salvar_interacao(
         session_id: str,
         pergunta: str,
         resposta: str,
@@ -48,25 +25,32 @@ class ChatRepository:
         nome_pet: Optional[str] = None
     ) -> bool:
         """
-        Registra o parecer e metadados da triagem clínica na tabela de auditoria.
+        Grava, em uma única transação, as duas mensagens do turno (tutor e modelo)
+        e o parecer de auditoria da triagem. Se qualquer insert falhar, nada é gravado.
         """
         try:
             with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
+                conn.executemany(
+                    "INSERT INTO mensagens_chat (session_id, pet_id, sender, text) VALUES (?, ?, ?, ?)",
+                    [
+                        (session_id, pet_id, "user", pergunta),
+                        (session_id, pet_id, "model", resposta),
+                    ]
+                )
+                conn.execute(
+                    """
                     INSERT INTO auditoria_triagens (
                         session_id, pet_id, nome_pet, pergunta, resposta,
                         categoria, urgencia, origem_resposta
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    session_id, pet_id, nome_pet, pergunta, resposta,
-                    categoria, urgencia, origem_resposta
-                ))
+                    """,
+                    (session_id, pet_id, nome_pet, pergunta, resposta, categoria, urgencia, origem_resposta)
+                )
                 conn.commit()
                 return True
         except Exception as e:
-            logger.error(f"Erro ao registrar auditoria no SQLite: {e}")
+            logger.error(f"Erro ao salvar interação no SQLite: {e}")
             return False
 
     @staticmethod
