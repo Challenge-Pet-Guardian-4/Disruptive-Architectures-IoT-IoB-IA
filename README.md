@@ -268,16 +268,16 @@ A documentação Swagger interativa ficará disponível em `http://localhost:800
 
 ### 🧪 Suíte de Homologação & Demonstração dos 4 Cenários (Vídeo Pitch)
 Para auditar os 4 cenários clínicos, a telemetria do ChromaDB e os guardrails em tempo real:
-```bash
-# Execução direta em memória (validação instantânea de QA):
-python deploy_guardianai_render/test_sprint4_scenarios.py --mode local
+`ash
+# Execução direta recomendada (raiz do repositório):
+python run_qa_demo.py
 
-# Execução cadenciada para demonstração no vídeo pitch (1 segundo por cenário):
-python deploy_guardianai_render/test_sprint4_scenarios.py --mode local --delay 1.0
+# Execução com delay customizado (ex: 0.8s para demonstração em vídeo):
+python run_qa_demo.py --delay 0.8
 
 # Execução via HTTP contra API local ou Render:
-python deploy_guardianai_render/test_sprint4_scenarios.py --mode api --url http://localhost:8000
-```
+python run_qa_demo.py --mode api --url http://localhost:8000
+`
 
 ### Deploy no Render
 A aplicação está calibrada para deploy automático através do arquivo [`render.yaml`](./deploy_guardianai_render/render.yaml), rodando com comando:
