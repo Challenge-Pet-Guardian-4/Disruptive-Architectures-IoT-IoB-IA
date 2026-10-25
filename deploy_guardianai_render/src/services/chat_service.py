@@ -116,10 +116,53 @@ class ChatService:
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 
-        # 2. Recuperação de Chunks da Base de Conhecimento via RAG (Embeddings Vetoriais + Similaridade de Cosseno)
+        # 2. Identificação de Intenções Especiais (Histórico do Pet / Dúvidas Gerais)
+        is_pet_info_query = any(k in pergunta_norm for k in [
+            "historico", "ficha", "prontuario", "dados do meu", "dados de", "sobre o meu pet",
+            "sobre meu pet", "quantos anos", "qual a raca", "qual o peso", "ele e castrado",
+            "minhas vacinas", "vacina dele", "vacinas dele", "alergia dele", "medicamento dele",
+            "o que voce sabe sobre"
+        ])
+
+        is_general_query = any(k in pergunta_norm for k in [
+            "como cuidar", "cuidar do meu", "cuidar de um", "dicas para", "cuidados com",
+            "o que voce faz", "o que voce consegue", "o que voce sabe fazer",
+            "o que diabos", "como funciona", "quem e voce", "ajuda com meu pet"
+        ])
+
+        # 3. Recuperação de Chunks da Base de Conhecimento via RAG (Embeddings Vetoriais + Similaridade de Cosseno)
         resultado_rag = KnowledgeService.buscar_chunks_rag(request.pergunta, top_k=3)
         chunks_recuperados = resultado_rag["chunks"]
         match_found = resultado_rag["match_found"]
+
+        # Se for dúvida abrangente sobre cuidados e temos contexto do pet, recuperar preventivo do porte/idade
+        if (is_general_query or (not match_found and any(w in pergunta_norm for w in ["cuidar", "cuidado", "rotina", "dica"]))) and p and not chunks_recuperados:
+            porte_calc = (p.porte or "medio").lower()
+            idade_calc = p.idade if p.idade is not None else 3
+            chunk_fallback_id = "prev_02"
+            if "pequeno" in porte_calc:
+                chunk_fallback_id = "prev_01"
+            elif any(k in porte_calc for k in ["grande", "gigante"]) or any(r in (p.raca or "").lower() for r in ["golden", "labrador", "pastor", "rottweiler"]):
+                chunk_fallback_id = "prev_03"
+            elif idade_calc == 0:
+                chunk_fallback_id = "prev_04"
+            elif idade_calc >= 7:
+                chunk_fallback_id = "prev_06"
+
+            chunks_adicionais = [c for c in KnowledgeService._chunks_indexados if c["id"] in {chunk_fallback_id, "faq_12", "faq_05"}]
+            if chunks_adicionais:
+                chunks_recuperados = [
+                    {
+                        "id": c["id"],
+                        "source": c["source"],
+                        "category": c["category"],
+                        "title": c["title"],
+                        "content": c["content"],
+                        "similarity_score": 0.85
+                    }
+                    for c in chunks_adicionais[:2]
+                ]
+                match_found = True
 
         sources_used = [
             RetrievedSource(
@@ -132,30 +175,32 @@ class ChatService:
             for c in chunks_recuperados
         ]
 
-        # 3. Construção do Contexto Estruturado do Pet
+        # 4. Construção do Contexto Estruturado do Pet
         contexto_pet_str = ""
         if p and p.nome:
+            castrado_str = "Sim" if p.castrado is True else ("Não" if p.castrado is False else "Não informado")
             partes_contexto = [
                 f"Nome: {p.nome}",
                 f"Raça: {p.raca or 'SRD'}",
                 f"Porte: {p.porte or 'médio'}",
                 f"Idade: {p.idade if p.idade is not None else 'não informada'} anos",
-                f"Peso: {p.peso or 'não informado'} kg"
+                f"Peso: {p.peso or 'não informado'} kg",
+                f"Castrado: {castrado_str}",
+                f"Alergias Cadastradas: {p.alergias or 'Nenhuma alergia conhecida registrada'}",
+                f"Medicamentos Contínuos: {p.medicamentos or 'Nenhum medicamento contínuo registrado'}",
+                f"Última Vacina: {p.ultimaVacina or 'Não registrada no app'}",
+                f"Última Consulta: {p.ultimaConsulta or 'Não registrada no app'}"
             ]
-            if p.alergias:
-                partes_contexto.append(f"Alergias Conhecidas: {p.alergias}")
-            if p.medicamentos:
-                partes_contexto.append(f"Medicamentos Contínuos: {p.medicamentos}")
-            if p.ultimaVacina:
-                partes_contexto.append(f"Última Vacina: {p.ultimaVacina}")
-            contexto_pet_str = "[Dados do Pet Ativo: " + ", ".join(partes_contexto) + "]"
+            contexto_pet_str = "[Ficha Cadastral e Histórico do Pet Ativo: " + ", ".join(partes_contexto) + "]"
 
-        # 4. Montagem do Prompt Fundamentado (RAG Prompt Template)
+        # 5. Montagem do Prompt Fundamentado (RAG Prompt Template)
         prompt_fundamentado = formatar_prompt_rag(
             pergunta=request.pergunta,
             contexto_pet_str=contexto_pet_str,
             chunks_recuperados=chunks_recuperados,
-            match_found=match_found
+            match_found=match_found,
+            is_pet_info_query=is_pet_info_query,
+            is_general_query=is_general_query
         )
 
         eh_pedido_programacao = detectar_pedido_programacao(request.pergunta)
@@ -197,7 +242,7 @@ class ChatService:
                 acoes_recomendadas=acoes,
                 origem_resposta=origem_ia,
                 sources_used=sources_used,
-                rag_grounded=match_found
+                rag_grounded=(match_found or is_pet_info_query)
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 

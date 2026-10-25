@@ -173,5 +173,23 @@ CHUNKS_FAQ: List[Dict[str, Any]] = [
             "comportamentalistas da Pet Guardian para terapias de dessensibilização e suporte nutracêutico seguro."
         ),
         "keywords": ["ansiedade de separacao", "medo de fogos", "trovao", "barulho alto", "estresse pet", "latido", "comportamento", "enriquecimento"]
-    }
+    },
+    {
+        "id": "faq_12",
+        "source": _SOURCE,
+        "urgency": "baixa",
+        "category": "faq",
+        "title": "Quantidade Recomendada de Ração por Porte, Faixa de Peso e Gramatura Diária",
+        "content": (
+            "A quantidade diária de ração deve ser calculada conforme o porte, peso corporal, idade e nível de atividade física do animal. "
+            "Referência média de gramatura diária para cães adultos com rações completas (Premium Especial ou Super Premium): "
+            "1. Porte Mini e Pequeno (até 10 kg, como Maltês, Shih Tzu, Yorkshire): 80g a 180g por dia, fracionados em 2 a 3 refeições; "
+            "2. Porte Médio (11 kg a 25 kg, como Beagle, Cocker, Buldogue Francês): 190g a 320g por dia, fracionados em 2 refeições; "
+            "3. Porte Grande (26 kg a 45 kg, como Golden Retriever, Labrador, Pastor Alemão): 330g a 500g por dia, fracionados em 2 refeições (evitando agitação física logo após comer); "
+            "4. Porte Gigante (acima de 45 kg, como Rottweiler, Bernese, Dogue Alemão): 500g a 800g por dia; "
+            "5. Gatos adultos (3 kg a 6 kg): 40g a 70g de ração seca por dia, sempre acompanhada de sachê úmido e água fresca. "
+            "Filhotes exigem ração específica de crescimento dividida em 3 a 4 refeições diárias. Consulte sempre a tabela da embalagem do fabricante e o veterinário da Pet Guardian para ajustar a dose exata pelo escore corporal do animal."
+        ),
+        "keywords": ["quantidade de racao", "quantidade de racao por porte", "racao por porte", "gramatura", "porcao diaria", "quanto de racao", "racao golden retriever", "peso e racao", "fracionamento racao", "alimentacao quantidade", "tabela de racao", "dose de racao", "gramas de racao", "racao por peso", "quantidade racao"]
+    },
 ]

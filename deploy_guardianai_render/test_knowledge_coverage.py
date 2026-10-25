@@ -40,6 +40,8 @@ CASOS = [
     ("Fezes com muco e diarreia de giárdia, como limpar a casa?", "inf_05"),
     ("Meu cão comeu bolo de cacau", "tox_02"),
     ("Quais frutas meu cachorro pode comer?", "faq_01"),
+    ("Como escovar os dentes do meu pet?", "hyg_08"),
+    ("Quantidade de ração por porte", "faq_12"),
     ("Qual a tabela de preços do transplante de córnea e parcelamento na clínica?", None),
     ("qual a capital da França", None),
 ]

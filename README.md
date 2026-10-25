@@ -145,7 +145,7 @@ Para solucionar esse desafio e garantir **embeddings vetoriais genuínos e busca
 
 ---
 
-## 📚 4. Base de Conhecimento Curada Pet Guardian (64 Chunks)
+## 📚 4. Base de Conhecimento Curada Pet Guardian (66 Chunks)
 
 A base de conhecimento foi amplamente expandida para cobrir as principais lacunas do dia a dia clínico, estruturada em chunks com metadados obrigatórios (`id`, `source`, `category`, `title`, `content`, `keywords`):
 

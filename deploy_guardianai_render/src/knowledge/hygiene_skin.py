@@ -106,4 +106,19 @@ CHUNKS_HYGIENE_SKIN: List[Dict[str, Any]] = [
         ),
         "keywords": ["vermifugo", "vermifugacao", "vermifugar", "vermes", "verme", "verminose", "lombriga", "giardia", "barriga inchada", "arrastando o bumbum", "diarreia filhote", "antiparasitario interno", "quanto tempo vermifugar", "frequencia vermifugacao", "intervalo vermifugo", "de quanto em quanto", "quando vermifugar"]
     },
+    {
+        "id": "hyg_08",
+        "source": _SOURCE,
+        "urgency": "baixa",
+        "category": "hygiene_skin",
+        "title": "Higiene Oral e Bucal: Como Escovar os Dentes do Pet, Prevenção de Tártaro e Doença Periodontal",
+        "content": (
+            "A escovação dental em cães e gatos deve ser realizada diariamente ou no mínimo 2 a 3 vezes por semana para prevenir o acúmulo de placa bacteriana, tártaro, gengivite e doença periodontal grave (que pode disseminar bactérias para o coração e rins). "
+            "Utilize SEMPRE escova dental com cerdas macias ou dedeira de silicone e pasta dental EXCLUSIVAMENTE veterinária com sabores palatáveis (como carne ou frango). "
+            "ALERTA CRÍTICO: NUNCA utilize creme dental humano: o flúor e o xilitol contidos em pastas humanas são altamente tóxicos para cães e gatos, provocando irritação gástrica severa, vômitos e hipoglicemia aguda. "
+            "Adapte o pet com paciência e reforço positivo: inicie passando o dedo com a pasta saborizada nos dentes e gengivas em sessões curtas, progredindo para a dedeira. "
+            "Petiscos mastigáveis e brinquedos odontológicos ajudam a reduzir a placa, mas não substituem a escovação. Realize avaliação bucal anual com o médico veterinário para checar a necessidade de profilaxia dental profissional."
+        ),
+        "keywords": ["escovar dentes", "escovacao dental", "dentes", "dente", "escovar os dentes", "escovacao de dentes", "como escovar os dentes", "pasta de dente", "tartaro", "gengivite", "mau halito", "higiene bucal", "saude oral", "dedeira", "placa bacteriana", "boca do pet", "periodontal", "dentes do pet"]
+    },
 ]

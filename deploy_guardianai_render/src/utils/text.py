@@ -19,6 +19,34 @@ STOPWORDS_PT: Set[str] = {
 
 # Dicionário de expansão semântica para aproximar a linguagem do tutor aos termos técnicos da clínica Pet Guardian
 MAPA_EXPANSAO_SEMANTICA: Dict[str, List[str]] = {
+    # Cuidados gerais, rotina e bem-estar
+    "cuidar": ["cuidado", "cuidados", "preventivo", "protocolo", "saude", "rotina", "bem-estar", "manejo"],
+    "cuidado": ["cuidado", "cuidados", "preventivo", "protocolo", "saude", "rotina", "bem-estar", "manejo"],
+    "cuidados": ["cuidado", "cuidados", "preventivo", "protocolo", "saude", "rotina", "bem-estar", "manejo"],
+    "cuidando": ["cuidado", "cuidados", "preventivo", "protocolo", "saude", "rotina", "bem-estar", "manejo"],
+    "bem-estar": ["cuidado", "cuidados", "rotina", "enriquecimento", "saude"],
+    # Higiene bucal e escovação dental
+    "escovar": ["escovacao", "dentes", "tartaro", "bucal", "dental", "boca", "higiene", "oral"],
+    "escove": ["escovacao", "dentes", "tartaro", "bucal", "dental", "boca", "higiene", "oral"],
+    "escovando": ["escovacao", "dentes", "tartaro", "bucal", "dental", "boca", "higiene", "oral"],
+    "dental": ["dentes", "tartaro", "escovacao", "bucal", "dental", "oral", "higiene"],
+    "bucal": ["dentes", "tartaro", "escovacao", "bucal", "dental", "oral", "higiene"],
+    "boca": ["dentes", "tartaro", "escovacao", "bucal", "dental", "oral", "higiene"],
+    # Quantidade de ração e nutrição por porte
+    "quantidade": ["quantidade", "gramatura", "porcao", "racao", "porte", "peso", "diaria", "nutricao"],
+    "gramatura": ["quantidade", "gramatura", "porcao", "racao", "porte", "peso", "diaria", "nutricao"],
+    "gramas": ["quantidade", "gramatura", "porcao", "racao", "porte", "peso", "diaria", "nutricao"],
+    "porcao": ["quantidade", "gramatura", "porcao", "racao", "porte", "peso", "diaria", "nutricao"],
+    "quanto": ["quantidade", "gramatura", "porcao", "racao", "porte", "peso"],
+    "porte": ["porte", "pequeno", "medio", "grande", "peso", "quantidade", "racao"],
+    # Histórico e ficha clínica do pet
+    "historico": ["historico", "prontuario", "dados", "ficha", "cadastro", "perfil", "consultas"],
+    "prontuario": ["historico", "prontuario", "dados", "ficha", "cadastro", "perfil", "consultas"],
+    "ficha": ["historico", "prontuario", "dados", "ficha", "cadastro", "perfil"],
+    "dados": ["historico", "prontuario", "dados", "ficha", "cadastro", "perfil"],
+    "cachorro": ["cao", "cachorro", "canino", "porte", "saude", "cuidados"],
+    "cao": ["cao", "cachorro", "canino", "porte", "saude", "cuidados"],
+    "caes": ["cao", "cachorro", "canino", "porte", "saude", "cuidados"],
     "cacau": ["cacau", "chocolate", "teobromina", "intoxicacao", "toxico"],
     "chocolate": ["chocolate", "cacau", "teobromina", "bombom", "metilxantinas", "toxico"],
     "uva": ["uva", "passas", "tartarico", "nefrotoxico", "renal"],
