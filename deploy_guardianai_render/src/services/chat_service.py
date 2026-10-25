@@ -121,7 +121,9 @@ class ChatService:
             "historico", "ficha", "prontuario", "dados do meu", "dados de", "sobre o meu pet",
             "sobre meu pet", "quantos anos", "qual a raca", "qual o peso", "ele e castrado",
             "minhas vacinas", "vacina dele", "vacinas dele", "alergia dele", "medicamento dele",
-            "o que voce sabe sobre"
+            "o que voce sabe sobre", "informacoes do meu", "informacoes sobre meu", "informacoes do pet",
+            "informacoes de", "dados cadastrais", "perfil do meu", "quem e o", "quem e meu",
+            "fale sobre o meu", "fale sobre o pet", "detalhes do pet", "detalhes do meu", "informacoes dele"
         ])
 
         is_general_query = any(k in pergunta_norm for k in [
@@ -175,22 +177,31 @@ class ChatService:
             for c in chunks_recuperados
         ]
 
-        # 4. Construção do Contexto Estruturado do Pet
+        # 4. Construção do Contexto Estruturado do Pet (Alinhado à Modelagem Java/Mobile)
         contexto_pet_str = ""
         if p and p.nome:
-            castrado_str = "Sim" if p.castrado is True else ("Não" if p.castrado is False else "Não informado")
+            castrado_str = "Sim" if p.castrado is True else ("Não" if p.castrado is False else None)
+            sexo_str = "Macho" if p.sexo and p.sexo.upper() in ["M", "MACHO"] else ("Fêmea" if p.sexo and p.sexo.upper() in ["F", "FEMEA"] else p.sexo)
+
             partes_contexto = [
                 f"Nome: {p.nome}",
                 f"Raça: {p.raca or 'SRD'}",
-                f"Porte: {p.porte or 'médio'}",
-                f"Idade: {p.idade if p.idade is not None else 'não informada'} anos",
-                f"Peso: {p.peso or 'não informado'} kg",
-                f"Castrado: {castrado_str}",
-                f"Alergias Cadastradas: {p.alergias or 'Nenhuma alergia conhecida registrada'}",
-                f"Medicamentos Contínuos: {p.medicamentos or 'Nenhum medicamento contínuo registrado'}",
-                f"Última Vacina: {p.ultimaVacina or 'Não registrada no app'}",
-                f"Última Consulta: {p.ultimaConsulta or 'Não registrada no app'}"
+                f"Porte: {p.porte or 'Médio'}",
             ]
+            if p.dataNasc:
+                partes_contexto.append(f"Data de Nascimento: {p.dataNasc}")
+            if p.idade is not None:
+                partes_contexto.append(f"Idade: {p.idade} ano(s)")
+            if sexo_str:
+                partes_contexto.append(f"Sexo: {sexo_str}")
+            if castrado_str:
+                partes_contexto.append(f"Castrado: {castrado_str}")
+
+            # Prontuário e Históricos Clínicos Reais (Vacinas, Consultas, Exames)
+            if p.historicos:
+                hist_formatados = [f"{h.tipoHist} ({h.dataHist})" for h in p.historicos]
+                partes_contexto.append(f"Históricos Registrados: {'; '.join(hist_formatados)}")
+
             contexto_pet_str = "[Ficha Cadastral e Histórico do Pet Ativo: " + ", ".join(partes_contexto) + "]"
 
         # 5. Montagem do Prompt Fundamentado (RAG Prompt Template)
@@ -287,7 +298,38 @@ class ChatService:
             )
             return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
 
-        # 9. Fallback Preventivo Contextual por Porte e Idade (quando não há match na base nem LLM online)
+        # 9. Fallback Direto de Ficha Cadastral (quando solicitado histórico/dados do pet e LLMs indisponíveis)
+        if is_pet_info_query and p and p.nome:
+            linhas_ficha = [
+                f"Aqui estão as informações cadastradas de {p.nome}:",
+                f"• Raça: {p.raca or 'SRD'}",
+                f"• Porte: {p.porte or 'Médio'}",
+            ]
+            if p.dataNasc:
+                linhas_ficha.append(f"• Data de Nascimento: {p.dataNasc}")
+            if p.idade is not None:
+                linhas_ficha.append(f"• Idade: {p.idade} ano(s)")
+            if p.sexo:
+                linhas_ficha.append(f"• Sexo: {'Macho' if p.sexo.upper() in ['M', 'MACHO'] else ('Fêmea' if p.sexo.upper() in ['F', 'FEMEA'] else p.sexo)}")
+            if p.castrado is not None:
+                linhas_ficha.append(f"• Castrado: {'Sim' if p.castrado else 'Não'}")
+            if p.historicos:
+                linhas_ficha.append("\nHistóricos e Procedimentos no App:")
+                for h in p.historicos:
+                    linhas_ficha.append(f"• {h.tipoHist} - {h.dataHist}")
+
+            resp = ChatResponse(
+                resposta=limpar_texto_mobile("\n".join(linhas_ficha)),
+                categoria="rotina",
+                urgencia="baixa",
+                acoes_recomendadas=["Manter carteira de vacinação atualizada", "Acompanhamento preventivo"],
+                origem_resposta="Guardian AI (Prontuário Cadastral Pet Guardian)",
+                sources_used=[],
+                rag_grounded=True
+            )
+            return cls._finalizar_e_persistir(resp, request, session_id, pet_id, nome_pet)
+
+        # 10. Fallback Preventivo Contextual por Porte e Idade (quando não há match na base nem LLM online)
         porte_req = (p.porte if p else None) or "medio"
         faixa_calc = KnowledgeService.calcular_faixa_etaria(p.idade if p else None)
         dados_cuidado = KnowledgeService.consultar_cuidados_porte_idade(porte_req, faixa_calc)
@@ -298,7 +340,7 @@ class ChatService:
             f"• Nutrição & Manejo: {dados_cuidado['recomendacao_nutricional']}\n"
             f"• Cuidados Clínicos: {dados_cuidado['alerta_porte']}\n"
             f"• Protocolo Preventivo: {dados_cuidado['protocolo_veterinario']}\n\n"
-            f"Essa dúvida específica não consta na base consultada. Para diagnósticos ou sintomas clínicos, consulte a Pet Guardian."
+            f"💡 Dica preventiva: Para uma orientação individualizada ou avaliação de sintomas clínicos específicos, consulte a equipe veterinária da Pet Guardian."
         )
 
         resp = ChatResponse(

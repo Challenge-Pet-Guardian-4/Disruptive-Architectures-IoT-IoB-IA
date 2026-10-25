@@ -1,8 +1,13 @@
 """
-Schemas Pydantic: Contexto do Animal de Estimação
+Schemas Pydantic: Contexto do Animal de Estimação e Prontuário Clínico Oficial
 """
-from typing import Optional, Union
+from typing import Optional, List
 from pydantic import BaseModel, Field
+
+class PetHistoricoItem(BaseModel):
+    id: Optional[int] = Field(default=None, description="Identificador do histórico no banco")
+    tipoHist: str = Field(description="Tipo de histórico: vacina, consulta, exame ou procedimento")
+    dataHist: str = Field(description="Data do registro em formato ISO ou textual")
 
 class PetContextPayload(BaseModel):
     id: Optional[int] = Field(default=None, description="Identificador único do pet")
@@ -13,8 +18,4 @@ class PetContextPayload(BaseModel):
     idade: Optional[int] = Field(default=None, description="Idade em anos do pet")
     sexo: Optional[str] = Field(default=None, description="Sexo do pet: 'macho' ou 'femea'")
     castrado: Optional[bool] = Field(default=None, description="Indicador de castração")
-    peso: Optional[Union[str, float, int]] = Field(default=None, description="Peso do pet em kg")
-    alergias: Optional[str] = Field(default=None, description="Histórico de alergias conhecidas")
-    medicamentos: Optional[str] = Field(default=None, description="Medicamentos de uso contínuo")
-    ultimaVacina: Optional[str] = Field(default=None, description="Data da última vacinação administrada")
-    ultimaConsulta: Optional[str] = Field(default=None, description="Data do último atendimento veterinário")
+    historicos: Optional[List[PetHistoricoItem]] = Field(default=None, description="Histórico de eventos clínicos (vacinas, consultas, exames)")
