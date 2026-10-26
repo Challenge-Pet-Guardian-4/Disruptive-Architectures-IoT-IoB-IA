@@ -21,7 +21,7 @@
 ## 🔗 Links Oficiais da Entrega
 
 * **Repositório GitHub:** [https://github.com/Challenge-Pet-Guardian-4/Disruptive-Architectures-IoT-IoB-IA](https://github.com/Challenge-Pet-Guardian-4/Disruptive-Architectures-IoT-IoB-IA)
-* **Vídeo Pitch Oficial no YouTube:** [https://youtu.be/zJd3PCx7tt8](https://youtu.be/zJd3PCx7tt8)
+* **Vídeo Pitch Oficial no YouTube:** [Video IoT - Challenge Pet Guardian Sprint 4](https://www.youtube.com/watch?v=FMsnVeIbJ88)
 * **Microsserviço em Produção (FastAPI / Render):** [`deploy_guardianai_render`](./deploy_guardianai_render)
 
 ---
