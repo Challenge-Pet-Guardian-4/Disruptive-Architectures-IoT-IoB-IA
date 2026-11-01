@@ -22,6 +22,7 @@
 
 * **Repositório GitHub:** [https://github.com/Challenge-Pet-Guardian-4/Disruptive-Architectures-IoT-IoB-IA](https://github.com/Challenge-Pet-Guardian-4/Disruptive-Architectures-IoT-IoB-IA)
 * **Microsserviço em Produção (FastAPI / Render):** [`deploy_guardianai_render`](./deploy_guardianai_render)
+* **Documentação:** [Documentação Disruptive Architectures Sprint 4 - Pet Guardian](./docs/Documentação%20Disruptive%20Architectures%20Sprint%204%20-%20Pet%20Guardian.pdf)
 
 ## 🔗 Vídeo de Demonstração (Sprint 4)
 
